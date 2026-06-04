@@ -8,24 +8,30 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
-  "devDependencies": {
-    "@effect/language-service": "^0.86.2",
-    "@types/bun": "latest",
-    "@types/pg": "^8.20.0",
-    "drizzle-kit": "^1.0.0-beta.22",
-    "pg": "^8.21.0"
-  },
   "peerDependencies": {
     "typescript": "^5"
   },
   "private": true,
   "type": "module",
   "dependencies": {
+    "effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@524536e",
     "@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@524536e",
     "@effect/sql-pg": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@524536e",
     "@effect/vitest": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@524536e",
+    "drizzle-orm": "1.0.0-beta.20",
+    "argon2": "^0.44.0",
     "dotenv": "^17.4.2",
-    "drizzle-orm": "^1.0.0-beta.22",
-    "effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@524536e"
+    "jose": "^6.2.3"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.86.2",
+    "@types/bun": "latest",
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "1.0.0-beta.20",
+    "pg": "^8.21.0"
+  },
+  "patchedDependencies": {
+    "drizzle-orm@1.0.0-beta.20": "patches/drizzle-orm@1.0.0-beta.20.patch"
   }
 }
+

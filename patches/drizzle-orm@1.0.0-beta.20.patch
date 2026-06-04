@@ -1,0 +1,1034 @@
+diff --git a/cache/core/cache-effect.d.ts b/cache/core/cache-effect.d.ts
+index 9fbd8787855f496063b7a19a80713e548f26e33a..9683827a2cd0c8432fa819e66dfcc7a065e923d5 100644
+--- a/cache/core/cache-effect.d.ts
++++ b/cache/core/cache-effect.d.ts
+@@ -1,71 +1,26 @@
+ import { CacheConfig } from "./types.js";
+ import { Cache, MutationOption } from "./cache.js";
+ import { entityKind } from "../../entity.js";
+-import * as Schema$1 from "effect/Schema";
+ import * as Effect from "effect/Effect";
+ import * as Layer from "effect/Layer";
++import * as Schema$1 from "effect/Schema";
++import * as ServiceMap from "effect/ServiceMap";
+ 
+ //#region src/cache/core/cache-effect.d.ts
+-declare const EffectCache_base: Effect.Service.Class<EffectCache, "drizzle-orm/EffectCache", {
+-  readonly sync: () => {
+-    strategy: () => "explicit" | "all";
+-    get: (key: string, tables: string[], isTag: boolean, isAutoInvalidate?: boolean | undefined) => Effect.Effect<any[] | undefined, EffectCacheError, never>;
+-    put: (hashedQuery: string, response: any, tables: string[], isTag: boolean, config?: CacheConfig | undefined) => Effect.Effect<void, EffectCacheError, never>;
+-    onMutate: (params: MutationOption) => Effect.Effect<void, EffectCacheError, never>;
+-    cache: Cache;
+-  };
+-  readonly accessors: true;
+-}>;
+-/**
+- * Effect service for caching query results in Drizzle ORM.
+- *
+- * By default, this service uses a no-op cache (no caching occurs). Use
+- * `EffectCache.fromDrizzle` to adapt a standard Drizzle cache implementation.
+- *
+- * @example
+- * ```ts
+- * // Use default (no caching)
+- * const db = yield* PgDrizzle.make({ relations }).pipe(
+- *   Effect.provide(PgDrizzle.DefaultServices),
+- * );
+- *
+- * // Use a custom Drizzle cache
+- * const db = yield* PgDrizzle.make({ relations }).pipe(
+- *   Effect.provide(EffectCache.layerFromDrizzle(myCache)),
+- *   Effect.provide(PgDrizzle.DefaultServices),
+- * );
+- * ```
+- */
++export interface EffectCacheShape {
++  readonly strategy: () => "all" | "explicit";
++  readonly get: (key: string, tables: string[], isTag: boolean, isAutoInvalidate?: boolean | undefined) => Effect.Effect<any[] | undefined, EffectCacheError, never>;
++  readonly put: (hashedQuery: string, response: any, tables: string[], isTag: boolean, config?: CacheConfig | undefined) => Effect.Effect<void, EffectCacheError, never>;
++  readonly onMutate: (params: MutationOption) => Effect.Effect<void, EffectCacheError, never>;
++  readonly cache: Cache;
++}
++
++declare const EffectCache_base: ServiceMap.ServiceClass<EffectCache, "drizzle-orm/EffectCache", EffectCacheShape>;
++
+ declare class EffectCache extends EffectCache_base {
+   static readonly [entityKind]: string;
+-  /**
+-   * Creates an EffectCache instance from a standard Drizzle cache.
+-   *
+-   * @param cache - A Drizzle cache instance implementing the `Cache` interface.
+-   * @returns A new EffectCache that delegates to the provided Drizzle cache.
+-   *
+-   * @example
+-   * ```ts
+-   * const drizzleCache = new MyCustomCache();
+-   * const effectCache = EffectCache.fromDrizzle(drizzleCache);
+-   * ```
+-   */
+-  static fromDrizzle(cache: Cache): EffectCache;
+-  /**
+-   * Creates a Layer that provides an EffectCache from a standard Drizzle cache.
+-   *
+-   * @param cache - A Drizzle cache instance implementing the `Cache` interface.
+-   * @returns A Layer that provides the EffectCache service.
+-   *
+-   * @example
+-   * ```ts
+-   * const drizzleCache = new MyCustomCache();
+-   * const db = yield* PgDrizzle.make({ relations }).pipe(
+-   *   Effect.provide(EffectCache.layerFromDrizzle(drizzleCache)),
+-   *   Effect.provide(PgDrizzle.DefaultServices),
+-   * );
+-   * ```
+-   */
++  static readonly Default: Layer.Layer<EffectCache, never, never>;
++  static fromDrizzle(cache: Cache): EffectCacheShape;
+   static layerFromDrizzle(cache: Cache): Layer.Layer<EffectCache, never, never>;
+ }
+ declare const EffectCacheError_base: Schema$1.TaggedErrorClass<EffectCacheError, "EffectCacheError", {
+@@ -73,12 +28,6 @@ declare const EffectCacheError_base: Schema$1.TaggedErrorClass<EffectCacheError,
+ } & {
+   cause: typeof Schema$1.Unknown;
+ }>;
+-/**
+- * Error type for cache operation failures.
+- *
+- * This error is thrown when any cache operation (get, put, onMutate) fails.
+- * The original error is available in the `cause` property.
+- */
+ declare class EffectCacheError extends EffectCacheError_base {
+   static readonly [entityKind]: string;
+ }
+diff --git a/cache/core/cache-effect.js b/cache/core/cache-effect.js
+index 90de9648fe5dee66b5369ecedadb70e2fd09e165..d46320bef484c4d76e49f2fc90879f34185780d1 100644
+--- a/cache/core/cache-effect.js
++++ b/cache/core/cache-effect.js
+@@ -1,65 +1,22 @@
+ import { NoopCache } from "./cache.js";
+ import { entityKind } from "../../entity.js";
+-import * as Schema$1 from "effect/Schema";
+ import * as Effect from "effect/Effect";
+ import * as Layer from "effect/Layer";
++import * as Schema$1 from "effect/Schema";
++import * as ServiceMap from "effect/ServiceMap";
+ 
+ //#region src/cache/core/cache-effect.ts
+-/**
+-* Effect service for caching query results in Drizzle ORM.
+-*
+-* By default, this service uses a no-op cache (no caching occurs). Use
+-* `EffectCache.fromDrizzle` to adapt a standard Drizzle cache implementation.
+-*
+-* @example
+-* ```ts
+-* // Use default (no caching)
+-* const db = yield* PgDrizzle.make({ relations }).pipe(
+-*   Effect.provide(PgDrizzle.DefaultServices),
+-* );
+-*
+-* // Use a custom Drizzle cache
+-* const db = yield* PgDrizzle.make({ relations }).pipe(
+-*   Effect.provide(EffectCache.layerFromDrizzle(myCache)),
+-*   Effect.provide(PgDrizzle.DefaultServices),
+-* );
+-* ```
+-*/
+-var EffectCache = class EffectCache extends Effect.Service()("drizzle-orm/EffectCache", {
+-	sync: () => make(new NoopCache()),
+-	accessors: true
++var EffectCache = class EffectCache extends ServiceMap.Service()("drizzle-orm/EffectCache", {
++	make: Effect.sync(() => make(new NoopCache())),
+ }) {
+-	static [entityKind] = this.Service._tag;
+-	/**
+-	* Creates an EffectCache instance from a standard Drizzle cache.
+-	*
+-	* @param cache - A Drizzle cache instance implementing the `Cache` interface.
+-	* @returns A new EffectCache that delegates to the provided Drizzle cache.
+-	*
+-	* @example
+-	* ```ts
+-	* const drizzleCache = new MyCustomCache();
+-	* const effectCache = EffectCache.fromDrizzle(drizzleCache);
+-	* ```
+-	*/
++	static [entityKind] = "drizzle-orm/EffectCache";
++
++	static Default = Layer.effect(EffectCache, EffectCache.make);
++
+ 	static fromDrizzle(cache) {
+-		return new EffectCache(make(cache));
++		return make(cache);
+ 	}
+-	/**
+-	* Creates a Layer that provides an EffectCache from a standard Drizzle cache.
+-	*
+-	* @param cache - A Drizzle cache instance implementing the `Cache` interface.
+-	* @returns A Layer that provides the EffectCache service.
+-	*
+-	* @example
+-	* ```ts
+-	* const drizzleCache = new MyCustomCache();
+-	* const db = yield* PgDrizzle.make({ relations }).pipe(
+-	*   Effect.provide(EffectCache.layerFromDrizzle(drizzleCache)),
+-	*   Effect.provide(PgDrizzle.DefaultServices),
+-	* );
+-	* ```
+-	*/
++
+ 	static layerFromDrizzle(cache) {
+ 		return Layer.succeed(EffectCache, EffectCache.fromDrizzle(cache));
+ 	}
+@@ -86,13 +43,7 @@ function make(cache) {
+ 		cache
+ 	};
+ }
+-/**
+-* Error type for cache operation failures.
+-*
+-* This error is thrown when any cache operation (get, put, onMutate) fails.
+-* The original error is available in the `cause` property.
+-*/
+-var EffectCacheError = class extends Schema$1.TaggedError()("EffectCacheError", { cause: Schema$1.Unknown }) {
++var EffectCacheError = class extends Schema$1.TaggedErrorClass()("EffectCacheError", { cause: Schema$1.Unknown }) {
+ 	static [entityKind] = "EffectCacheError";
+ };
+ 
+diff --git a/effect-core/errors.d.ts b/effect-core/errors.d.ts
+index 0741618ced789433865e5ae98dde0f12455c052d..d54a6ec41b1c3fb2a44f11920c6a26c0c02ed871 100644
+--- a/effect-core/errors.d.ts
++++ b/effect-core/errors.d.ts
+@@ -21,7 +21,7 @@ declare const EffectDrizzleQueryError_base: Schema$1.TaggedErrorClass<EffectDriz
+ declare class EffectDrizzleQueryError extends EffectDrizzleQueryError_base {
+   static readonly [entityKind]: string;
+   get message(): string;
+-  constructor(params: Omit<Schema$1.Struct.Constructor<typeof EffectDrizzleQueryError.fields>, '_tag'>);
++  constructor(params: Omit<Schema$1.Struct.MakeIn<typeof EffectDrizzleQueryError.fields>, '_tag'>);
+ }
+ declare const EffectTransactionRollbackError_base: Schema$1.TaggedErrorClass<EffectTransactionRollbackError, "EffectTransactionRollbackError", {
+   readonly _tag: Schema$1.tag<"EffectTransactionRollbackError">;
+diff --git a/effect-core/errors.js b/effect-core/errors.js
+index 6cd2c999c0857669b20ff3ee7a4e01b13884ad0b..290da3a291c8919c16f1092c74e0a7f4a5feaf53 100644
+--- a/effect-core/errors.js
++++ b/effect-core/errors.js
+@@ -2,18 +2,18 @@ import { entityKind } from "../entity.js";
+ import * as Schema$1 from "effect/Schema";
+ 
+ //#region src/effect-core/errors.ts
+-var EffectDrizzleError = class extends Schema$1.TaggedError()("EffectDrizzleError", {
++var EffectDrizzleError = class extends Schema$1.TaggedErrorClass()("EffectDrizzleError", {
+ 	message: Schema$1.String,
+ 	cause: Schema$1.Unknown
+ }) {
+-	static [entityKind] = this._tag;
++	static [entityKind] = "EffectDrizzleError";
+ };
+-var EffectDrizzleQueryError = class EffectDrizzleQueryError extends Schema$1.TaggedError()("EffectDrizzleQueryError", {
++var EffectDrizzleQueryError = class EffectDrizzleQueryError extends Schema$1.TaggedErrorClass()("EffectDrizzleQueryError", {
+ 	query: Schema$1.String,
+ 	params: Schema$1.Array(Schema$1.Any).pipe(Schema$1.mutable),
+ 	cause: Schema$1.Unknown
+ }) {
+-	static [entityKind] = this._tag;
++	static [entityKind] = "EffectDrizzleQueryError";
+ 	get message() {
+ 		return `Failed query: ${this.query}\nparams: ${this.params}`;
+ 	}
+@@ -22,12 +22,12 @@ var EffectDrizzleQueryError = class EffectDrizzleQueryError extends Schema$1.Tag
+ 		Error.captureStackTrace(this, EffectDrizzleQueryError);
+ 	}
+ };
+-var EffectTransactionRollbackError = class extends Schema$1.TaggedError()("EffectTransactionRollbackError", {}) {
+-	static [entityKind] = this._tag;
++var EffectTransactionRollbackError = class extends Schema$1.TaggedErrorClass()("EffectTransactionRollbackError", {}) {
++	static [entityKind] = "EffectTransactionRollbackError";
+ 	message = "Rollback";
+ };
+-var MigratorInitError = class extends Schema$1.TaggedError()("MigratorInitError", { exitCode: Schema$1.Literal("databaseMigrations", "localMigrations") }) {
+-	static [entityKind] = this._tag;
++var MigratorInitError = class extends Schema$1.TaggedErrorClass()("MigratorInitError", { exitCode: Schema$1.Literals(["databaseMigrations", "localMigrations"]) }) {
++	static [entityKind] = "MigratorInitError";
+ };
+ 
+ //#endregion
+diff --git a/effect-core/logger.d.ts b/effect-core/logger.d.ts
+index b3e21ac0fc666591265de983c4017416660604fa..997bdcf91f7560bedfae1681670ca790c46450a7 100644
+--- a/effect-core/logger.d.ts
++++ b/effect-core/logger.d.ts
+@@ -2,87 +2,20 @@ import { entityKind } from "../entity.js";
+ import { Logger } from "../logger.js";
+ import * as Effect from "effect/Effect";
+ import * as Layer from "effect/Layer";
++import * as ServiceMap from "effect/ServiceMap";
+ 
+ //#region src/effect-core/logger.d.ts
+-declare const EffectLogger_base: Effect.Service.Class<EffectLogger, "drizzle-orm/EffectLogger", {
+-  readonly sync: () => {
+-    logQuery: (_query: string, _params: unknown[]) => Effect.Effect<void, never, never>;
+-  };
+-  readonly accessors: true;
+-}>;
+-/**
+- * Effect service for logging SQL queries in Drizzle ORM.
+- *
+- * By default, this service is a no-op (no logging occurs). Use `EffectLogger.layer`
+- * to enable Effect-based logging, or `EffectLogger.fromDrizzle` to adapt a standard
+- * Drizzle logger.
+- *
+- * @example
+- * ```ts
+- * // Use default (no logging)
+- * const db = yield* PgDrizzle.make({ relations }).pipe(
+- *   Effect.provide(PgDrizzle.DefaultServices),
+- * );
+- *
+- * // Enable Effect-based logging
+- * const db = yield* PgDrizzle.make({ relations }).pipe(
+- *   Effect.provide(EffectLogger.layer),
+- *   Effect.provide(PgDrizzle.DefaultServices),
+- * );
+- *
+- * // Use a custom Drizzle logger
+- * const db = yield* PgDrizzle.make({ relations }).pipe(
+- *   Effect.provide(EffectLogger.layerFromDrizzle(myLogger)),
+- *   Effect.provide(PgDrizzle.DefaultServices),
+- * );
+- * ```
+- */
++export interface EffectLoggerShape {
++  readonly logQuery: (query: string, params: unknown[]) => Effect.Effect<void, never, never>;
++}
++
++declare const EffectLogger_base: ServiceMap.ServiceClass<EffectLogger, "drizzle-orm/EffectLogger", EffectLoggerShape>;
++
+ declare class EffectLogger extends EffectLogger_base {
+   static readonly [entityKind]: string;
+-  /**
+-   * Creates an EffectLogger instance from a standard Drizzle logger.
+-   *
+-   * @param logger - A Drizzle logger instance implementing the `Logger` interface.
+-   * @returns A new EffectLogger that delegates to the provided Drizzle logger.
+-   *
+-   * @example
+-   * ```ts
+-   * const drizzleLogger = new DefaultLogger();
+-   * const effectLogger = EffectLogger.fromDrizzle(drizzleLogger);
+-   * ```
+-   */
+-  static fromDrizzle(logger: Logger): EffectLogger;
+-  /**
+-   * Creates a Layer that provides an EffectLogger from a standard Drizzle logger.
+-   *
+-   * @param logger - A Drizzle logger instance implementing the `Logger` interface.
+-   * @returns A Layer that provides the EffectLogger service.
+-   *
+-   * @example
+-   * ```ts
+-   * const drizzleLogger = new DefaultLogger();
+-   * const db = yield* PgDrizzle.make({ relations }).pipe(
+-   *   Effect.provide(EffectLogger.layerFromDrizzle(drizzleLogger)),
+-   *   Effect.provide(PgDrizzle.DefaultServices),
+-   * );
+-   * ```
+-   */
++  static readonly Default: Layer.Layer<EffectLogger, never, never>;
++  static fromDrizzle(logger: Logger): EffectLoggerShape;
+   static layerFromDrizzle(logger: Logger): Layer.Layer<EffectLogger, never, never>;
+-  /**
+-   * A Layer that provides an EffectLogger with Effect-based logging.
+-   *
+-   * This layer logs queries using `Effect.log()` with annotations for the query
+-   * SQL and parameters. Use this when you want query logging integrated with
+-   * Effect's logging infrastructure.
+-   *
+-   * @example
+-   * ```ts
+-   * const db = yield* PgDrizzle.make({ relations }).pipe(
+-   *   Effect.provide(EffectLogger.layer),
+-   *   Effect.provide(PgDrizzle.DefaultServices),
+-   * );
+-   * ```
+-   */
+   static layer: Layer.Layer<EffectLogger, never, never>;
+ }
+ //#endregion
+diff --git a/effect-core/logger.js b/effect-core/logger.js
+index b56cacb7870c087dfb342208fd383c5d95a8b1ae..4f279ba1db22f09f17c7863635a654bdaeea5f94 100644
+--- a/effect-core/logger.js
++++ b/effect-core/logger.js
+@@ -1,106 +1,48 @@
+ import { entityKind } from "../entity.js";
+ import * as Effect from "effect/Effect";
+ import * as Layer from "effect/Layer";
++import * as ServiceMap from "effect/ServiceMap";
+ 
+ //#region src/effect-core/logger.ts
+-/**
+-* Effect service for logging SQL queries in Drizzle ORM.
+-*
+-* By default, this service is a no-op (no logging occurs). Use `EffectLogger.layer`
+-* to enable Effect-based logging, or `EffectLogger.fromDrizzle` to adapt a standard
+-* Drizzle logger.
+-*
+-* @example
+-* ```ts
+-* // Use default (no logging)
+-* const db = yield* PgDrizzle.make({ relations }).pipe(
+-*   Effect.provide(PgDrizzle.DefaultServices),
+-* );
+-*
+-* // Enable Effect-based logging
+-* const db = yield* PgDrizzle.make({ relations }).pipe(
+-*   Effect.provide(EffectLogger.layer),
+-*   Effect.provide(PgDrizzle.DefaultServices),
+-* );
+-*
+-* // Use a custom Drizzle logger
+-* const db = yield* PgDrizzle.make({ relations }).pipe(
+-*   Effect.provide(EffectLogger.layerFromDrizzle(myLogger)),
+-*   Effect.provide(PgDrizzle.DefaultServices),
+-* );
+-* ```
+-*/
+-var EffectLogger = class EffectLogger extends Effect.Service()("drizzle-orm/EffectLogger", {
+-	sync: () => {
+-		const logQuery = (_query, _params) => Effect.void;
+-		return { logQuery };
+-	},
+-	accessors: true
++var EffectLogger = class EffectLogger extends ServiceMap.Service()("drizzle-orm/EffectLogger", {
++	make: Effect.sync(() => ({
++		logQuery: (_query, _params) => Effect.void,
++	})),
+ }) {
+-	static [entityKind] = this.Service._tag;
+-	/**
+-	* Creates an EffectLogger instance from a standard Drizzle logger.
+-	*
+-	* @param logger - A Drizzle logger instance implementing the `Logger` interface.
+-	* @returns A new EffectLogger that delegates to the provided Drizzle logger.
+-	*
+-	* @example
+-	* ```ts
+-	* const drizzleLogger = new DefaultLogger();
+-	* const effectLogger = EffectLogger.fromDrizzle(drizzleLogger);
+-	* ```
+-	*/
++	static [entityKind] = "drizzle-orm/EffectLogger";
++
++	static Default = Layer.effect(EffectLogger, EffectLogger.make);
++
+ 	static fromDrizzle(logger) {
+-		return new EffectLogger({ logQuery: (query, params) => {
+-			return Effect.sync(() => logger.logQuery(query, params));
+-		} });
++		return {
++			logQuery: (query, params) => {
++				return Effect.sync(() => logger.logQuery(query, params));
++			},
++		};
+ 	}
+-	/**
+-	* Creates a Layer that provides an EffectLogger from a standard Drizzle logger.
+-	*
+-	* @param logger - A Drizzle logger instance implementing the `Logger` interface.
+-	* @returns A Layer that provides the EffectLogger service.
+-	*
+-	* @example
+-	* ```ts
+-	* const drizzleLogger = new DefaultLogger();
+-	* const db = yield* PgDrizzle.make({ relations }).pipe(
+-	*   Effect.provide(EffectLogger.layerFromDrizzle(drizzleLogger)),
+-	*   Effect.provide(PgDrizzle.DefaultServices),
+-	* );
+-	* ```
+-	*/
++
+ 	static layerFromDrizzle(logger) {
+ 		return Layer.succeed(EffectLogger, EffectLogger.fromDrizzle(logger));
+ 	}
+-	/**
+-	* A Layer that provides an EffectLogger with Effect-based logging.
+-	*
+-	* This layer logs queries using `Effect.log()` with annotations for the query
+-	* SQL and parameters. Use this when you want query logging integrated with
+-	* Effect's logging infrastructure.
+-	*
+-	* @example
+-	* ```ts
+-	* const db = yield* PgDrizzle.make({ relations }).pipe(
+-	*   Effect.provide(EffectLogger.layer),
+-	*   Effect.provide(PgDrizzle.DefaultServices),
+-	* );
+-	* ```
+-	*/
+-	static layer = Layer.succeed(EffectLogger, new EffectLogger({ logQuery: Effect.fn("EffectLogger.logQuery")(function* (query, params) {
+-		const stringifiedParams = params.map((p) => {
+-			try {
+-				return JSON.stringify(p);
+-			} catch {
+-				return String(p);
+-			}
+-		});
+-		yield* Effect.log().pipe(Effect.annotateLogs({
+-			query,
+-			params: stringifiedParams
+-		}));
+-	}) }));
++
++	static layer = Layer.succeed(
++		EffectLogger,
++		{
++			logQuery: Effect.fn("EffectLogger.logQuery")(function* (query, params) {
++				const stringifiedParams = params.map((p) => {
++					try {
++						return JSON.stringify(p);
++					} catch {
++						return String(p);
++					}
++				});
++				yield* Effect.log().pipe(Effect.annotateLogs({
++					query,
++					params: stringifiedParams
++				}));
++			}),
++		},
++	);
+ };
+ 
+ //#endregion
+diff --git a/effect-core/query-effect.js b/effect-core/query-effect.js
+index b841ac5c22b8db2043e04d6b3f39d145ac21c5eb..858ecb220df1ff2ecdc54f2cc3710dbfc3119c65 100644
+--- a/effect-core/query-effect.js
++++ b/effect-core/query-effect.js
+@@ -1,8 +1,46 @@
+-import * as Effectable from "effect/Effectable";
++import { pipeArguments } from "effect/Pipeable";
+ 
+ //#region src/effect-core/query-effect.ts
++const EffectTypeId = '~effect/Effect';
++const EffectIdentifier = `${EffectTypeId}/identifier`;
++const EffectEvaluate = `${EffectTypeId}/evaluate`;
++
++const effectVariance = {
++	_A: (a) => a,
++	_E: (e) => e,
++	_R: (r) => r,
++};
++
++const QueryEffectProto = {
++	[EffectTypeId]: effectVariance,
++	pipe() {
++		return pipeArguments(this, arguments);
++	},
++	[Symbol.iterator]() {
++		let done = false;
++		const self = this;
++		return {
++			next(value) {
++				if (done) return { done: true, value };
++				done = true;
++				return { done: false, value: self };
++			},
++			[Symbol.iterator]() {
++				return this;
++			},
++		};
++	},
++	[EffectIdentifier]: 'DrizzleQuery',
++	[EffectEvaluate]() {
++		return this.execute();
++	},
++};
++
+ function applyEffectWrapper(baseClass) {
+-	Object.assign(baseClass.prototype, Effectable.CommitPrototype);
++	Object.assign(baseClass.prototype, QueryEffectProto);
++	baseClass.prototype.asEffect = function() {
++		return this.execute();
++	};
+ 	baseClass.prototype.commit = function() {
+ 		return this.execute();
+ 	};
+diff --git a/effect-postgres/migrator.d.ts b/effect-postgres/migrator.d.ts
+index bb775cf8e195482962f08e04605009ed4dfe8a89..17249140cb469e42ad5c98a499596700d8349f19 100644
+--- a/effect-postgres/migrator.d.ts
++++ b/effect-postgres/migrator.d.ts
+@@ -3,7 +3,7 @@ import { EffectPgDatabase } from "./driver.js";
+ import { MigrationConfig } from "../migrator.js";
+ import * as effect_Effect0 from "effect/Effect";
+ import { AnyRelations } from "../relations.js";
+-import * as _effect_sql_SqlError0 from "@effect/sql/SqlError";
++import * as _effect_sql_SqlError0 from "effect/unstable/sql/SqlError";
+ 
+ //#region src/effect-postgres/migrator.d.ts
+ declare function migrate<TSchema extends Record<string, unknown>, TRelations extends AnyRelations>(db: EffectPgDatabase<TSchema, TRelations>, config: MigrationConfig): effect_Effect0.Effect<undefined, MigratorInitError | EffectDrizzleQueryError | _effect_sql_SqlError0.SqlError, never>;
+diff --git a/effect-postgres/session.d.ts b/effect-postgres/session.d.ts
+index ba9294f9bc0b7317f04fa322506b057006246c99..8738b4f7771f296d418a56934c4247d5f91bdaee 100644
+--- a/effect-postgres/session.d.ts
++++ b/effect-postgres/session.d.ts
+@@ -6,15 +6,15 @@ import { PgDialect } from "../pg-core/dialect.js";
+ import * as Effect from "effect/Effect";
+ import { AnyRelations } from "../relations.js";
+ import { EffectDrizzleQueryError } from "../effect-core/errors.js";
+-import { EffectLogger } from "../effect-core/logger.js";
++import type { EffectLoggerShape } from "../effect-core/logger.js";
+ import { PgEffectPreparedQuery, PgEffectSession, PgEffectTransaction } from "../pg-core/effect/session.js";
+ import { PgClient } from "@effect/sql-pg/PgClient";
+-import { EffectCache } from "../cache/core/cache-effect.js";
++import type { EffectCacheShape } from "../cache/core/cache-effect.js";
+ import { QueryEffectHKTBase } from "../effect-core/query-effect.js";
+ import { WithCacheConfig } from "../cache/core/types.js";
+ import { PgQueryResultHKT, PreparedQueryConfig } from "../pg-core/session.js";
+ import { SelectedFieldsOrdered } from "../pg-core/query-builders/select.types.js";
+-import { SqlError } from "@effect/sql/SqlError";
++import { SqlError } from "effect/unstable/sql/SqlError";
+ 
+ //#region src/effect-postgres/session.d.ts
+ interface EffectPgQueryEffectHKT extends QueryEffectHKTBase {
+@@ -32,7 +32,7 @@ declare class EffectPgPreparedQuery<T extends PreparedQueryConfig, TIsRqbV2 exte
+   private customResultMapper?;
+   private isRqbV2Query?;
+   static readonly [entityKind]: string;
+-  constructor(client: PgClient, query: Query, logger: EffectLogger, cache: EffectCache, queryMetadata: {
++  constructor(client: PgClient, query: Query, logger: EffectLoggerShape, cache: EffectCacheShape, queryMetadata: {
+     type: 'select' | 'update' | 'delete' | 'insert';
+     tables: string[];
+   } | undefined, cacheConfig: WithCacheConfig | undefined, fields: SelectedFieldsOrdered | undefined, name: string | undefined, _isResponseInArrayMode: boolean, customResultMapper?: ((rows: TIsRqbV2 extends true ? Record<string, unknown>[] : unknown[][]) => T["execute"]) | undefined, isRqbV2Query?: TIsRqbV2 | undefined);
+@@ -47,7 +47,7 @@ declare class EffectPgSession<TQueryResult extends PgQueryResultHKT, TFullSchema
+   private logger;
+   private cache;
+   static readonly [entityKind]: string;
+-  constructor(client: PgClient, dialect: PgDialect, relations: TRelations, schema: V1.RelationalSchemaConfig<TSchema> | undefined, logger: EffectLogger, cache: EffectCache);
++  constructor(client: PgClient, dialect: PgDialect, relations: TRelations, schema: V1.RelationalSchemaConfig<TSchema> | undefined, logger: EffectLoggerShape, cache: EffectCacheShape);
+   prepareQuery<T extends PreparedQueryConfig = PreparedQueryConfig>(query: Query, fields: SelectedFieldsOrdered | undefined, name: string | undefined, isResponseInArrayMode: boolean, customResultMapper?: (rows: unknown[][], mapColumnValue?: (value: unknown) => unknown) => T['execute'], queryMetadata?: {
+     type: 'select' | 'update' | 'delete' | 'insert';
+     tables: string[];
+diff --git a/effect-postgres/session.js b/effect-postgres/session.js
+index 957735d4a590bf129c7157f967686c3a0f55f8b6..ab1d6f87695d0acc9a973c36b582852f19e4d1ed 100644
+--- a/effect-postgres/session.js
++++ b/effect-postgres/session.js
+@@ -3,7 +3,6 @@ import { mapResultRow } from "../utils.js";
+ import { fillPlaceholders } from "../sql/sql.js";
+ import * as Effect from "effect/Effect";
+ import { EffectDrizzleQueryError } from "../effect-core/errors.js";
+-import { EffectLogger } from "../effect-core/logger.js";
+ import { PgEffectPreparedQuery, PgEffectSession, PgEffectTransaction } from "../pg-core/effect/session.js";
+ 
+ //#region src/effect-postgres/session.ts
+@@ -19,37 +18,37 @@ var EffectPgPreparedQuery = class extends PgEffectPreparedQuery {
+ 		this.isRqbV2Query = isRqbV2Query;
+ 	}
+ 	execute(placeholderValues) {
+-		return Effect.gen(this, function* () {
++		return Effect.gen({ self: this }, function* () {
+ 			if (this.isRqbV2Query) return yield* this.executeRqbV2(placeholderValues);
+-			const { query, customResultMapper, fields, joinsNotNullableMap, client } = this;
++			const { query, customResultMapper, fields, joinsNotNullableMap, client, logger } = this;
+ 			const params = fillPlaceholders(query.params, placeholderValues ?? {});
+-			yield* EffectLogger.logQuery(query.sql, params);
++			yield* logger.logQuery(query.sql, params);
+ 			if (!fields && !customResultMapper) return yield* this.queryWithCache(query.sql, params, this.client.unsafe(query.sql, params).withoutTransform);
+ 			return yield* this.queryWithCache(query.sql, params, client.unsafe(query.sql, params).values).pipe(Effect.map((rows) => {
+ 				if (customResultMapper) return customResultMapper(rows);
+ 				return rows.map((row) => mapResultRow(fields, row, joinsNotNullableMap));
+ 			}));
+-		}).pipe(Effect.provideService(EffectLogger, this.logger));
++		});
+ 	}
+ 	executeRqbV2(placeholderValues) {
+-		return Effect.gen(this, function* () {
+-			const { query, customResultMapper, client } = this;
++		return Effect.gen({ self: this }, function* () {
++			const { query, customResultMapper, client, logger } = this;
+ 			const params = fillPlaceholders(query.params, placeholderValues ?? {});
+-			yield* EffectLogger.logQuery(query.sql, params);
+-			return yield* client.unsafe(query.sql, params).withoutTransform.pipe(Effect.flatMap((v) => Effect.try(() => customResultMapper(v))), Effect.catchAll((e) => new EffectDrizzleQueryError({
++			yield* logger.logQuery(query.sql, params);
++			return yield* client.unsafe(query.sql, params).withoutTransform.pipe(Effect.flatMap((v) => Effect.try({ try: () => customResultMapper(v), catch: (e) => e })), Effect.catch((e) => Effect.fail(new EffectDrizzleQueryError({
+ 				query: query.sql,
+ 				params,
+ 				cause: e
+-			})));
+-		}).pipe(Effect.provideService(EffectLogger, this.logger));
++			}))));
++		});
+ 	}
+ 	all(placeholderValues) {
+-		return Effect.gen(this, function* () {
+-			const { query, client } = this;
++		return Effect.gen({ self: this }, function* () {
++			const { query, client, logger } = this;
+ 			const params = fillPlaceholders(query.params, placeholderValues ?? {});
+-			yield* EffectLogger.logQuery(query.sql, params);
++			yield* logger.logQuery(query.sql, params);
+ 			return yield* this.queryWithCache(query.sql, params, client.unsafe(query.sql, params).withoutTransform);
+-		}).pipe(Effect.provideService(EffectLogger, this.logger));
++		});
+ 	}
+ 	/** @internal */
+ 	isResponseInArrayMode() {
+@@ -80,7 +79,7 @@ var EffectPgSession = class extends PgEffectSession {
+ 	}
+ 	transaction(transaction) {
+ 		const { dialect, relations, schema } = this;
+-		return this.client.withTransaction(Effect.gen(this, function* () {
++		return this.client.withTransaction(Effect.gen({ self: this }, function* () {
+ 			return yield* transaction(new EffectPgTransaction(dialect, this, relations, schema));
+ 		}));
+ 	}
+diff --git a/effect-schema/column.d.ts b/effect-schema/column.d.ts
+index bda22f5b24ebf187851a628b8b0bbe0e9fa7e39d..8f3ea6973938faebadf403813939e8cbe540224a 100644
+--- a/effect-schema/column.d.ts
++++ b/effect-schema/column.d.ts
+@@ -1,12 +1,12 @@
+ import { Column } from "../column.js";
+-import { Schema } from "effect/Schema";
++import { Top as SchemaTop } from "effect/Schema";
+ import { Schema as Schema$1 } from "effect";
+ 
+ //#region src/effect-schema/column.d.ts
+ declare const literalSchema: Schema$1.Union<[typeof Schema$1.String, typeof Schema$1.Number, typeof Schema$1.Boolean, typeof Schema$1.Null]>;
+-declare const jsonSchema: Schema$1.Union<[Schema$1.Union<[typeof Schema$1.String, typeof Schema$1.Number, typeof Schema$1.Boolean, typeof Schema$1.Null]>, Schema$1.Record$<typeof Schema$1.String, typeof Schema$1.Any>, Schema$1.Array$<typeof Schema$1.Any>]>;
++declare const jsonSchema: Schema$1.Union<[Schema$1.Union<[typeof Schema$1.String, typeof Schema$1.Number, typeof Schema$1.Boolean, typeof Schema$1.Null]>, Schema$1.Record<typeof Schema$1.String, typeof Schema$1.Any>, Schema$1.Array<typeof Schema$1.Any>]>;
+ declare const bufferSchema: Schema$1.instanceOf<Buffer<ArrayBufferLike>>;
+-declare function columnToSchema(column: Column): Schema.Any;
++declare function columnToSchema(column: Column): SchemaTop;
+ declare const bigintStringModeSchema: Schema$1.filter<Schema$1.filter<typeof Schema$1.BigInt>>;
+ declare const unsignedBigintStringModeSchema: Schema$1.filter<Schema$1.filter<typeof Schema$1.BigInt>>;
+ //#endregion
+diff --git a/effect-schema/column.js b/effect-schema/column.js
+index 01ca919d460a6bdede0007d545a859fd05ea326d..401980f0a280ee331eb296d450c30547acfda378 100644
+--- a/effect-schema/column.js
++++ b/effect-schema/column.js
+@@ -5,11 +5,8 @@ import { extractExtendedColumnType } from "../column-builder.js";
+ import { Schema } from "effect";
+ 
+ //#region src/effect-schema/column.ts
+-const literalSchema = Schema.Union(Schema.String, Schema.Number, Schema.Boolean, Schema.Null);
+-const jsonSchema = Schema.Union(literalSchema, Schema.Record({
+-	key: Schema.String,
+-	value: Schema.Any
+-}), Schema.Array(Schema.Any));
++const literalSchema = Schema.Union([Schema.String, Schema.Number, Schema.Boolean, Schema.Null]);
++const jsonSchema = Schema.Union([literalSchema, Schema.Record(Schema.String, Schema.Any), Schema.Array(Schema.Any)]);
+ const bufferSchema = Schema.instanceOf(Buffer);
+ function columnToSchema(column) {
+ 	let schema;
+@@ -128,11 +125,11 @@ function numberColumnToSchema(column, constraint) {
+ 			break;
+ 	}
+ 	let schema = integer ? Schema.Int : Schema.Number;
+-	schema = schema.pipe(Schema.greaterThanOrEqualTo(min), Schema.lessThanOrEqualTo(max));
++	schema = schema.check(Schema.isGreaterThanOrEqualTo(min), Schema.isLessThanOrEqualTo(max));
+ 	return schema;
+ }
+-const bigintStringModeSchema = Schema.BigInt.pipe(Schema.greaterThanOrEqualToBigInt(CONSTANTS.INT64_MIN), Schema.lessThanOrEqualToBigInt(CONSTANTS.INT64_MAX));
+-const unsignedBigintStringModeSchema = Schema.BigInt.pipe(Schema.greaterThanOrEqualToBigInt(0n), Schema.lessThanOrEqualToBigInt(CONSTANTS.INT64_UNSIGNED_MAX));
++const bigintStringModeSchema = Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(CONSTANTS.INT64_MIN), Schema.isLessThanOrEqualToBigInt(CONSTANTS.INT64_MAX));
++const unsignedBigintStringModeSchema = Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(0n), Schema.isLessThanOrEqualToBigInt(CONSTANTS.INT64_UNSIGNED_MAX));
+ function bigintColumnToSchema(column, constraint) {
+ 	let min;
+ 	let max;
+@@ -146,9 +143,9 @@ function bigintColumnToSchema(column, constraint) {
+ 			max = CONSTANTS.INT64_UNSIGNED_MAX;
+ 			break;
+ 	}
+-	let schema = Schema.BigIntFromSelf;
+-	if (min !== void 0) schema = schema.pipe(Schema.greaterThanOrEqualToBigInt(min));
+-	if (max !== void 0) schema = schema.pipe(Schema.lessThanOrEqualToBigInt(max));
++	let schema = Schema.BigInt;
++	if (min !== void 0) schema = schema.check(Schema.isGreaterThanOrEqualToBigInt(min));
++	if (max !== void 0) schema = schema.check(Schema.isLessThanOrEqualToBigInt(max));
+ 	return schema;
+ }
+ function pgArrayColumnToSchema(column, dimensions) {
+@@ -182,18 +179,18 @@ function pgArrayColumnToSchema(column, dimensions) {
+ function arrayColumnToSchema(column, constraint) {
+ 	switch (constraint) {
+ 		case "geometry":
+-		case "point": return Schema.Tuple(Schema.Number, Schema.Number);
+-		case "line": return Schema.Tuple(Schema.Number, Schema.Number, Schema.Number);
++		case "point": return Schema.Tuple([Schema.Number, Schema.Number]);
++		case "line": return Schema.Tuple([Schema.Number, Schema.Number, Schema.Number]);
+ 		case "vector":
+ 		case "halfvector": {
+ 			const length = column.length;
+ 			const schema = Schema.Array(Schema.Number);
+-			return length ? schema.pipe(Schema.itemsCount(length)) : schema;
++			return length ? schema.check(Schema.isLengthBetween(length, length)) : schema;
+ 		}
+ 		case "int64vector": {
+ 			const length = column.length;
+-			const schema = Schema.Array(Schema.BigIntFromSelf.pipe(Schema.greaterThanOrEqualToBigInt(CONSTANTS.INT64_MIN), Schema.lessThanOrEqualToBigInt(CONSTANTS.INT64_MAX)));
+-			return length ? schema.pipe(Schema.itemsCount(length)) : schema;
++			const schema = Schema.Array(Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(CONSTANTS.INT64_MIN), Schema.isLessThanOrEqualToBigInt(CONSTANTS.INT64_MAX)));
++			return length ? schema.check(Schema.isLengthBetween(length, length)) : schema;
+ 		}
+ 		case "basecolumn": {
+ 			const baseColumn = column.baseColumn;
+@@ -201,7 +198,7 @@ function arrayColumnToSchema(column, constraint) {
+ 				const baseSchema = columnToSchema(baseColumn);
+ 				const length = column.length;
+ 				const schema = Schema.Array(baseSchema);
+-				if (length) return schema.pipe(Schema.itemsCount(length));
++				if (length) return schema.check(Schema.isLengthBetween(length, length));
+ 				return schema;
+ 			}
+ 			return Schema.Array(Schema.Any);
+@@ -224,24 +221,24 @@ function objectColumnToSchema(column, constraint) {
+ 			b: Schema.Number,
+ 			c: Schema.Number
+ 		});
+-		default: return Schema.Object;
++		default: return Schema.ObjectKeyword;
+ 	}
+ }
+ function stringColumnToSchema(column, constraint) {
+ 	const { name: columnName, length, isLengthExact } = column;
+ 	let regex;
+ 	if (constraint === "binary") regex = /^[01]*$/;
+-	if (constraint === "uuid") return Schema.UUID;
++	if (constraint === "uuid") return Schema.String.check(Schema.isUUID());
+ 	if (constraint === "enum") {
+ 		const enumValues = column.enumValues;
+ 		if (!enumValues) throw new Error(`Column "${getTableName(getColumnTable(column))}"."${columnName}" is of 'enum' type, but lacks enum values`);
+-		return Schema.Literal(...enumValues);
++		return Schema.Literals(enumValues);
+ 	}
+ 	if (constraint === "int64") return bigintStringModeSchema;
+ 	if (constraint === "uint64") return unsignedBigintStringModeSchema;
+ 	let schema = Schema.String;
+-	schema = regex ? schema.pipe(Schema.pattern(regex)) : schema;
+-	return length && isLengthExact ? schema.pipe(Schema.length(length)) : length ? schema.pipe(Schema.maxLength(length)) : schema;
++	schema = regex ? schema.check(Schema.isPattern(regex)) : schema;
++	return length && isLengthExact ? schema.check(Schema.isLengthBetween(length, length)) : length ? schema.check(Schema.isMaxLength(length)) : schema;
+ }
+ 
+ //#endregion
+diff --git a/effect-schema/column.types.d.ts b/effect-schema/column.types.d.ts
+index 800238eeedff57a8514c2f922696475f2cfa103b..1a78ffb9bba3eed8aaa9c2796825674c299b2c1c 100644
+--- a/effect-schema/column.types.d.ts
++++ b/effect-schema/column.types.d.ts
+@@ -1,28 +1,28 @@
+ import { bigintStringModeSchema, bufferSchema, jsonSchema, unsignedBigintStringModeSchema } from "./column.js";
+ import { Column } from "../column.js";
+ import { Assume } from "../utils.js";
+-import { Array$, Literal, NullOr, Schema, Struct, Tuple, Tuple2, UndefinedOr, optional } from "effect/Schema";
++import { $Array, Literals, NullOr, Top as SchemaTop, Struct, Tuple, UndefinedOr, optional } from "effect/Schema";
+ import { ColumnTypeData, ExtractColumnTypeData } from "../column-builder.js";
+ import { Schema as Schema$1 } from "effect";
+ 
+ //#region src/effect-schema/column.types.d.ts
+ type GetArrayDepth<T, Depth extends number = 0> = Depth extends 5 ? 5 : T extends readonly (infer U)[] ? GetArrayDepth<U, [1, 2, 3, 4, 5][Depth]> : Depth;
+-type WrapInEffectSchemaArray<TSchema extends Schema.Any, TDepth extends number> = TDepth extends 0 ? TSchema : TDepth extends 1 ? Array$<TSchema> : TDepth extends 2 ? Array$<Array$<TSchema>> : TDepth extends 3 ? Array$<Array$<Array$<TSchema>>> : TDepth extends 4 ? Array$<Array$<Array$<Array$<TSchema>>>> : TDepth extends 5 ? Array$<Array$<Array$<Array$<Array$<TSchema>>>>> : Array$<typeof Schema$1.Any>;
++type WrapInEffectSchemaArray<TSchema extends SchemaTop, TDepth extends number> = TDepth extends 0 ? TSchema : TDepth extends 1 ? $Array<TSchema> : TDepth extends 2 ? $Array<$Array<TSchema>> : TDepth extends 3 ? $Array<$Array<$Array<TSchema>>> : TDepth extends 4 ? $Array<$Array<$Array<$Array<TSchema>>>> : TDepth extends 5 ? $Array<$Array<$Array<$Array<$Array<TSchema>>>>> : $Array<typeof Schema$1.Any>;
+ type IsPgArrayColumn<TColumn extends Column<any>, TType extends ColumnTypeData> = TType['type'] extends 'array' ? false : GetArrayDepth<TColumn['_']['data']> extends 0 ? false : true;
+ type GetEffectSchemaType<TColumn extends Column<any>, TType extends ColumnTypeData = ExtractColumnTypeData<TColumn['_']['dataType']>> = IsPgArrayColumn<TColumn, TType> extends true ? WrapInEffectSchemaArray<GetBaseEffectSchemaType<TColumn, TType>, GetArrayDepth<TColumn['_']['data']>> : GetBaseEffectSchemaType<TColumn, TType>;
+-type GetBaseEffectSchemaType<TColumn extends Column<any>, TType extends ColumnTypeData = ExtractColumnTypeData<TColumn['_']['dataType']>> = TType['type'] extends 'array' ? TType['constraint'] extends 'geometry' | 'point' ? Tuple2<typeof Schema$1.Number, typeof Schema$1.Number> : TType['constraint'] extends 'line' ? Tuple<[typeof Schema$1.Number, typeof Schema$1.Number, typeof Schema$1.Number]> : TType['constraint'] extends 'vector' | 'halfvector' ? Array$<typeof Schema$1.Number> : TType['constraint'] extends 'int64vector' ? Array$<typeof Schema$1.BigIntFromSelf> : TType['constraint'] extends 'basecolumn' ? TColumn['_'] extends {
++type GetBaseEffectSchemaType<TColumn extends Column<any>, TType extends ColumnTypeData = ExtractColumnTypeData<TColumn['_']['dataType']>> = TType['type'] extends 'array' ? TType['constraint'] extends 'geometry' | 'point' ? Tuple<[typeof Schema$1.Number, typeof Schema$1.Number]> : TType['constraint'] extends 'line' ? Tuple<[typeof Schema$1.Number, typeof Schema$1.Number, typeof Schema$1.Number]> : TType['constraint'] extends 'vector' | 'halfvector' ? $Array<typeof Schema$1.Number> : TType['constraint'] extends 'int64vector' ? $Array<typeof Schema$1.BigInt> : TType['constraint'] extends 'basecolumn' ? TColumn['_'] extends {
+   baseColumn: infer TBaseColumn extends Column<any>;
+-} ? Array$<Assume<GetEffectSchemaType<TBaseColumn>, Schema.Any>> : never : Array$<typeof Schema$1.Any> : TType['type'] extends 'object' ? TType['constraint'] extends 'date' ? typeof Schema$1.Date : TType['constraint'] extends 'buffer' ? typeof bufferSchema : TType['constraint'] extends 'point' | 'geometry' ? Struct<{
++} ? $Array<Assume<GetEffectSchemaType<TBaseColumn>, SchemaTop>> : never : $Array<typeof Schema$1.Any> : TType['type'] extends 'object' ? TType['constraint'] extends 'date' ? typeof Schema$1.Date : TType['constraint'] extends 'buffer' ? typeof bufferSchema : TType['constraint'] extends 'point' | 'geometry' ? Struct<{
+   x: typeof Schema$1.Number;
+   y: typeof Schema$1.Number;
+ }> : TType['constraint'] extends 'line' ? Struct<{
+   a: typeof Schema$1.Number;
+   b: typeof Schema$1.Number;
+   c: typeof Schema$1.Number;
+-}> : TType['constraint'] extends 'json' ? typeof jsonSchema : typeof Schema$1.Object : TType['type'] extends 'custom' ? typeof Schema$1.Any : TType['type'] extends 'number' ? (TType['constraint'] extends 'int8' | 'int16' | 'int24' | 'int32' | 'int53' | 'uint8' | 'uint16' | 'uint24' | 'uint32' | 'uint53' | 'year' ? typeof Schema$1.Int : typeof Schema$1.Number) : TType['type'] extends 'bigint' ? typeof Schema$1.BigIntFromSelf : TType['type'] extends 'boolean' ? typeof Schema$1.Boolean : TType['type'] extends 'string' ? TType['constraint'] extends 'uuid' ? typeof Schema$1.UUID : TType['constraint'] extends 'enum' ? Literal<TColumn['enumValues']> : TType['constraint'] extends 'int64' ? typeof bigintStringModeSchema : TType['constraint'] extends 'uint64' ? typeof unsignedBigintStringModeSchema : typeof Schema$1.String : typeof Schema$1.Any;
+-type HandleSelectColumn<TSchema extends Schema.Any, TColumn extends Column> = TColumn['_']['notNull'] extends true ? TSchema : NullOr<TSchema>;
+-type HandleInsertColumn<TSchema extends Schema.Any, TColumn extends Column> = TColumn['_']['notNull'] extends true ? TColumn['_']['hasDefault'] extends true ? optional<UndefinedOr<TSchema>> : TSchema : optional<UndefinedOr<NullOr<TSchema>>>;
+-type HandleUpdateColumn<TSchema extends Schema.Any, TColumn extends Column> = TColumn['_']['notNull'] extends true ? optional<UndefinedOr<TSchema>> : optional<UndefinedOr<NullOr<TSchema>>>;
++}> : TType['constraint'] extends 'json' ? typeof jsonSchema : typeof Schema$1.ObjectKeyword : TType['type'] extends 'custom' ? typeof Schema$1.Any : TType['type'] extends 'number' ? (TType['constraint'] extends 'int8' | 'int16' | 'int24' | 'int32' | 'int53' | 'uint8' | 'uint16' | 'uint24' | 'uint32' | 'uint53' | 'year' ? typeof Schema$1.Int : typeof Schema$1.Number) : TType['type'] extends 'bigint' ? typeof Schema$1.BigInt : TType['type'] extends 'boolean' ? typeof Schema$1.Boolean : TType['type'] extends 'string' ? TType['constraint'] extends 'uuid' ? typeof Schema$1.String : TType['constraint'] extends 'enum' ? Literals<TColumn['enumValues']> : TType['constraint'] extends 'int64' ? typeof bigintStringModeSchema : TType['constraint'] extends 'uint64' ? typeof unsignedBigintStringModeSchema : typeof Schema$1.String : typeof Schema$1.Any;
++type HandleSelectColumn<TSchema extends SchemaTop, TColumn extends Column> = TColumn['_']['notNull'] extends true ? TSchema : NullOr<TSchema>;
++type HandleInsertColumn<TSchema extends SchemaTop, TColumn extends Column> = TColumn['_']['notNull'] extends true ? TColumn['_']['hasDefault'] extends true ? optional<UndefinedOr<TSchema>> : TSchema : optional<UndefinedOr<NullOr<TSchema>>>;
++type HandleUpdateColumn<TSchema extends SchemaTop, TColumn extends Column> = TColumn['_']['notNull'] extends true ? optional<UndefinedOr<TSchema>> : optional<UndefinedOr<NullOr<TSchema>>>;
+ type HandleColumn<TType extends 'select' | 'insert' | 'update', TColumn extends Column> = TType extends 'select' ? HandleSelectColumn<GetEffectSchemaType<TColumn>, TColumn> : TType extends 'insert' ? HandleInsertColumn<GetEffectSchemaType<TColumn>, TColumn> : TType extends 'update' ? HandleUpdateColumn<GetEffectSchemaType<TColumn>, TColumn> : GetEffectSchemaType<TColumn>;
+ //#endregion
+ export { GetEffectSchemaType, HandleColumn };
+diff --git a/effect-schema/schema.js b/effect-schema/schema.js
+index 89410b558f1614f8be8d54295fa87abfe5e1a685..0d0cbb8f25191c29f4f47aaa5c9996c704aa4823 100644
+--- a/effect-schema/schema.js
++++ b/effect-schema/schema.js
+@@ -10,7 +10,7 @@ import { Schema } from "effect";
+ //#region src/effect-schema/schema.ts
+ function isOptional(schema) {
+ 	if ((typeof schema !== "object" || schema === null) && typeof schema !== "function") return false;
+-	return !Schema.isSchema(schema) && "from" in schema && Schema.isSchema(schema.from);
++	return "schema" in schema && Schema.isSchema(schema.schema);
+ }
+ function isStructField(schema) {
+ 	if (Schema.isSchema(schema)) return true;
+@@ -31,7 +31,7 @@ function handleColumns(columns, refinements, conditions) {
+ 		const column = is(selected, Column) ? selected : void 0;
+ 		const schema = column ? columnToSchema(column) : Schema.Any;
+ 		const _refined = isStructField(refinement) || typeof refinement !== "function" ? schema : refinement(schema);
+-		const refined = isOptional(_refined) ? _refined.from : _refined;
++		const refined = isOptional(_refined) ? _refined.schema : _refined;
+ 		if (conditions.never(column)) continue;
+ 		else columnSchemas[key] = refined;
+ 		if (column) {
+@@ -42,7 +42,7 @@ function handleColumns(columns, refinements, conditions) {
+ 	return Schema.Struct(columnSchemas);
+ }
+ function handleEnum(enum_) {
+-	return Schema.Literal(...enum_.enumValues);
++	return Schema.Literals(enum_.enumValues);
+ }
+ const selectConditions = {
+ 	never: () => false,
+diff --git a/effect-schema/schema.types.d.ts b/effect-schema/schema.types.d.ts
+index 272252bad8c7fc7e70daeb809965c00a952bd1ab..746495cd7e1449d06a64964aac8f6eed6ca3c8fb 100644
+--- a/effect-schema/schema.types.d.ts
++++ b/effect-schema/schema.types.d.ts
+@@ -1,7 +1,7 @@
+ import { BuildRefine, BuildSchema, NoUnknownKeys } from "./schema.types.internal.js";
+ import { InferInsertModel, InferSelectModel, Table } from "../table.js";
+ import { View } from "../sql/sql.js";
+-import { Literal } from "effect/Schema";
++import { Literals } from "effect/Schema";
+ import { CockroachEnum } from "../cockroach-core/columns/enum.js";
+ import { PgEnum } from "../pg-core/columns/enum.js";
+ 
+@@ -11,7 +11,7 @@ interface CreateSelectSchema {
+   <TTable extends Table, TRefine extends BuildRefine<TTable['_']['columns']>>(table: TTable, refine?: NoUnknownKeys<TRefine, InferSelectModel<TTable>>): BuildSchema<'select', TTable['_']['columns'], TRefine>;
+   <TView extends View>(view: TView): BuildSchema<'select', TView['_']['selectedFields'], undefined>;
+   <TView extends View, TRefine extends BuildRefine<TView['_']['selectedFields']>>(view: TView, refine: NoUnknownKeys<TRefine, TView['$inferSelect']>): BuildSchema<'select', TView['_']['selectedFields'], TRefine>;
+-  <TEnum extends PgEnum<any> | CockroachEnum<any>>(enum_: TEnum): Literal<TEnum['enumValues']>;
++  <TEnum extends PgEnum<any> | CockroachEnum<any>>(enum_: TEnum): Literals<TEnum['enumValues']>;
+ }
+ interface CreateInsertSchema {
+   <TTable extends Table>(table: TTable): BuildSchema<'insert', TTable['_']['columns'], undefined>;
+diff --git a/effect-schema/schema.types.internal.d.ts b/effect-schema/schema.types.internal.d.ts
+index 69305ff1f6a1e43342a50095ff12e65b9daae737..9b50052a77a873b6c7fe69959db40370bc580e5d 100644
+--- a/effect-schema/schema.types.internal.d.ts
++++ b/effect-schema/schema.types.internal.d.ts
+@@ -4,7 +4,7 @@ import { Table } from "../table.js";
+ import { Column } from "../column.js";
+ import { Assume, DrizzleTypeError, Simplify } from "../utils.js";
+ import { View } from "../sql/sql.js";
+-import { Schema, Struct, UndefinedOr } from "effect/Schema";
++import { Top as SchemaTop, Struct, UndefinedOr } from "effect/Schema";
+ import { Schema as Schema$1 } from "effect";
+ import { SelectedFieldsFlat } from "../operations.js";
+ 
+@@ -14,12 +14,12 @@ interface Conditions {
+   optional: (column: Column) => boolean;
+   nullable: (column: Column) => boolean;
+ }
+-type BuildRefineField<T> = T extends Schema.Any ? ((schema: T) => Schema.Any) | Schema.Any : never;
++type BuildRefineField<T> = T extends SchemaTop ? ((schema: T) => SchemaTop) | SchemaTop : never;
+ type BuildRefine<TColumns extends Record<string, any>> = { [K in keyof TColumns as TColumns[K] extends Column | SelectedFieldsFlat<Column> | Table | View ? K : never]?: TColumns[K] extends Column ? BuildRefineField<GetEffectSchemaType<TColumns[K]>> : BuildRefine<GetSelection<TColumns[K]>> };
+-type HandleRefinement<TType extends 'select' | 'insert' | 'update', TRefinement, TColumn extends Column> = TRefinement extends (((schema: any) => infer R extends Schema.Any)) ? (TColumn['_']['notNull'] extends true ? R : (Schema$1.NullOr<R>)) extends infer TSchema extends Schema.Any ? TType extends 'update' ? Schema$1.optional<UndefinedOr<TSchema>> : TSchema : typeof Schema$1.Any : TRefinement;
+-type IsRefinementDefined<TRefinements extends Record<string | symbol | number, any> | undefined, TKey extends string | symbol | number> = TRefinements extends object ? TRefinements[TKey] extends Schema.Any | Schema$1.optional<Schema.Any> | Schema$1.optionalWith<Schema.Any, any> | ((schema: any) => any) ? true : false : false;
+-type BuildSchema<TType extends 'select' | 'insert' | 'update', TColumns extends Record<string, any>, TRefinements extends Record<string, any> | undefined> = Struct<Simplify<{ [K in keyof TColumns as ColumnIsGeneratedAlwaysAs<TColumns[K]> extends true ? TType extends 'select' ? K : never : K]: TColumns[K] extends infer TColumn extends Column ? IsRefinementDefined<TRefinements, K> extends true ? Assume<HandleRefinement<TType, TRefinements[K & keyof TRefinements], TColumn>, Schema.Any | Schema$1.optional<Schema.Any> | Schema$1.optionalWith<Schema.Any, any>> : HandleColumn<TType, TColumn> : TColumns[K] extends infer TObject extends SelectedFieldsFlat<Column> | Table | View ? BuildSchema<TType, GetSelection<TObject>, TRefinements extends object ? TRefinements[K & keyof TRefinements] : undefined> : typeof Schema$1.Any }>>;
+-type NoUnknownKeys<TRefinement extends Record<string, any>, TCompare extends Record<string, any>> = { [K in keyof TRefinement]: K extends keyof TCompare ? TRefinement[K] extends Record<string, Schema.Any> ? NoUnknownKeys<TRefinement[K], TCompare[K]> : TRefinement[K] : DrizzleTypeError<`Found unknown key in refinement: "${K & string}"`> };
++type HandleRefinement<TType extends 'select' | 'insert' | 'update', TRefinement, TColumn extends Column> = TRefinement extends (((schema: any) => infer R extends SchemaTop)) ? (TColumn['_']['notNull'] extends true ? R : (Schema$1.NullOr<R>)) extends infer TSchema extends SchemaTop ? TType extends 'update' ? Schema$1.optional<UndefinedOr<TSchema>> : TSchema : typeof Schema$1.Any : TRefinement;
++type IsRefinementDefined<TRefinements extends Record<string | symbol | number, any> | undefined, TKey extends string | symbol | number> = TRefinements extends object ? TRefinements[TKey] extends SchemaTop | Schema$1.optional<SchemaTop> | Schema$1.optionalKey<SchemaTop> | ((schema: any) => any) ? true : false : false;
++type BuildSchema<TType extends 'select' | 'insert' | 'update', TColumns extends Record<string, any>, TRefinements extends Record<string, any> | undefined> = Struct<Simplify<{ [K in keyof TColumns as ColumnIsGeneratedAlwaysAs<TColumns[K]> extends true ? TType extends 'select' ? K : never : K]: TColumns[K] extends infer TColumn extends Column ? IsRefinementDefined<TRefinements, K> extends true ? Assume<HandleRefinement<TType, TRefinements[K & keyof TRefinements], TColumn>, SchemaTop | Schema$1.optional<SchemaTop> | Schema$1.optionalKey<SchemaTop>> : HandleColumn<TType, TColumn> : TColumns[K] extends infer TObject extends SelectedFieldsFlat<Column> | Table | View ? BuildSchema<TType, GetSelection<TObject>, TRefinements extends object ? TRefinements[K & keyof TRefinements] : undefined> : typeof Schema$1.Any }>>;
++type NoUnknownKeys<TRefinement extends Record<string, any>, TCompare extends Record<string, any>> = { [K in keyof TRefinement]: K extends keyof TCompare ? TRefinement[K] extends Record<string, SchemaTop> ? NoUnknownKeys<TRefinement[K], TCompare[K]> : TRefinement[K] : DrizzleTypeError<`Found unknown key in refinement: "${K & string}"`> };
+ //#endregion
+ export { BuildRefine, BuildSchema, Conditions, NoUnknownKeys };
+ //# sourceMappingURL=schema.types.internal.d.ts.map
+\ No newline at end of file
+diff --git a/pg-core/effect/db.d.ts b/pg-core/effect/db.d.ts
+index a55378398bb346505831296af2597f9d3d20652a..2cfbdbd96497b022dbea35db70f9b841dce1de1b 100644
+--- a/pg-core/effect/db.d.ts
++++ b/pg-core/effect/db.d.ts
+@@ -16,7 +16,7 @@ import { SQL, SQLWrapper } from "../../sql/sql.js";
+ import * as V1 from "../../_relations.js";
+ import { PgDialect } from "../dialect.js";
+ import { AnyRelations, EmptyRelations } from "../../relations.js";
+-import { EffectCache } from "../../cache/core/cache-effect.js";
++import { EffectCacheShape } from "../../cache/core/cache-effect.js";
+ import { Effect } from "effect";
+ import { PgTable } from "../table.js";
+ import { PgViewBase } from "../view-base.js";
+@@ -26,7 +26,7 @@ import { PgEffectSelectBuilder } from "./select.js";
+ import { PgInsertBuilder } from "../query-builders/insert.js";
+ import { RelationalQueryBuilder } from "../query-builders/query.js";
+ import { QueryEffectHKTBase } from "../../effect-core/query-effect.js";
+-import * as _effect_sql_SqlError0 from "@effect/sql/SqlError";
++import * as _effect_sql_SqlError0 from "effect/unstable/sql/SqlError";
+ 
+ //#region src/pg-core/effect/db.d.ts
+ declare class PgEffectDatabase<TEffectHKT extends QueryEffectHKTBase, TQueryResult extends PgQueryResultHKT, TFullSchema extends Record<string, unknown> = Record<string, never>, TRelations extends AnyRelations = EmptyRelations, TSchema extends V1.TablesRelationalConfig = V1.ExtractTablesWithRelations<TFullSchema>> {
+@@ -78,7 +78,7 @@ declare class PgEffectDatabase<TEffectHKT extends QueryEffectHKTBase, TQueryResu
+    */
+   $with: WithBuilder;
+   $cache: {
+-    invalidate: EffectCache['onMutate'];
++    invalidate: EffectCacheShape['onMutate'];
+   };
+   $count(source: PgTable | PgViewBase | SQL | SQLWrapper, filters?: SQL<unknown>): PgEffectCountBuilder<TEffectHKT>;
+   /**
+diff --git a/pg-core/effect/session.d.ts b/pg-core/effect/session.d.ts
+index b988d1734f144461f9d664fac72998b6131bdff8..4e147b057a0aa09cda2cd5042a1397bc951e545f 100644
+--- a/pg-core/effect/session.d.ts
++++ b/pg-core/effect/session.d.ts
+@@ -12,7 +12,7 @@ import { EffectDrizzleQueryError, EffectTransactionRollbackError, MigratorInitEr
+ import { EffectCache } from "../../cache/core/cache-effect.js";
+ import { QueryEffectHKTBase, QueryEffectKind } from "../../effect-core/query-effect.js";
+ import { WithCacheConfig } from "../../cache/core/types.js";
+-import { SqlError } from "@effect/sql/SqlError";
++import { SqlError } from "effect/unstable/sql/SqlError";
+ 
+ //#region src/pg-core/effect/session.d.ts
+ declare abstract class PgEffectPreparedQuery<T extends PreparedQueryConfig, TEffectHKT extends QueryEffectHKTBase = QueryEffectHKTBase> extends PgBasePreparedQuery {
+diff --git a/pg-core/effect/session.js b/pg-core/effect/session.js
+index 4ed608789f5a6a200c50104668622516b1a10e83..abb15c1832c51d8fd600843daf501256cc214a98 100644
+--- a/pg-core/effect/session.js
++++ b/pg-core/effect/session.js
+@@ -26,7 +26,7 @@ var PgEffectPreparedQuery = class extends PgBasePreparedQuery {
+ 		if (!this.cacheConfig?.enabled) this.cacheConfig = void 0;
+ 	}
+ 	queryWithCache(queryString, params, query) {
+-		return Effect.gen(this, function* () {
++		return Effect.gen({ self: this }, function* () {
+ 			const { cacheConfig, queryMetadata } = this;
+ 			const cache = yield* EffectCache;
+ 			const cacheStrat = cache && !is(cache.cache, NoopCache) ? yield* Effect.tryPromise(() => strategyFor(queryString, params, queryMetadata, cacheConfig)) : { type: "skip" };
+@@ -46,11 +46,11 @@ var PgEffectPreparedQuery = class extends PgBasePreparedQuery {
+ 			}
+ 			assertUnreachable(cacheStrat);
+-		}).pipe(Effect.provideService(EffectCache, this.cache), Effect.catchAll((e) => {
++		}).pipe(Effect.provideService(EffectCache, this.cache), Effect.catch((e) => {
+-			return new EffectDrizzleQueryError({
++			return Effect.fail(new EffectDrizzleQueryError({
+ 				query: queryString,
+ 				params,
+ 				cause: Cause.fail(e)
+-			});
++			}));
+ 		}));
+ 	}
+ };
+diff --git a/package.json b/package.json
+index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000001 100644
+--- a/package.json
++++ b/package.json
+@@ -49,8 +49,8 @@
+   "peerDependencies": {
+     "@aws-sdk/client-rds-data": ">=3",
+     "@cloudflare/workers-types": ">=4",
+-    "@effect/sql": "^0.48.5",
+-    "@effect/sql-pg": "^0.49.7",
++    "@effect/sql-pg": ">=4.0.0-beta.42",
++    "effect": ">=4.0.0-beta.42",
+     "@electric-sql/pglite": ">=0.2.0",
+     "@libsql/client": ">=0.10.0",
+     "@libsql/client-wasm": ">=0.10.0",
+@@ -180,9 +180,9 @@
+     "@upstash/redis": {
+       "optional": true
+     },
+-    "@effect/sql": {
++    "effect": {
+       "optional": true
+     },
+     "@effect/sql-pg": {
+       "optional": true
+     },

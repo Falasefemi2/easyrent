@@ -3,6 +3,10 @@ import { ConfigError } from "../lib/errors.ts";
 
 export class EnvConfig extends Schema.Class<EnvConfig>("EnvConfig")({
 	DATABASE_URL: Schema.String,
+	ACCESS_TOKEN_SECRET: Schema.String,
+	ACCESS_TOKEN_EXPIRY: Schema.String,
+	REFRESH_TOKEN_SECRET: Schema.String,
+	REFRESH_TOKEN_EXPIRY: Schema.String,
 	PORT: Schema.String,
 }) {}
 

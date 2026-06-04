@@ -96,6 +96,17 @@ export const favorites = pgTable(
 	],
 );
 
+export const refreshTokens = pgTable("refresh_tokens", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	userId: uuid("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	tokenHash: text("token_hash").notNull().unique(), // store hash, not raw token
+	expiresAt: timestamp("expires_at").notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	revokedAt: timestamp("revoked_at"), // null = active
+});
+
 export const relations = defineRelations(
 	{
 		users,
