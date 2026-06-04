@@ -11,6 +11,7 @@ import {
 	InvalidToken,
 	TokenExpired,
 } from "./AuthError";
+import { UsersApiGroup } from "../users/UsersApi";
 
 const AuthTokenSchema = Schema.Struct({
 	accessToken: Schema.String,
@@ -86,6 +87,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 
 export class Api extends HttpApi.make("api")
 	.add(AuthApiGroup)
+	.add(UsersApiGroup)
 	.annotateMerge(
 		OpenApi.annotations({
 			title: "Easy Rent API",
