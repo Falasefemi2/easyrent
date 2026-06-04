@@ -24,7 +24,6 @@
     "@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@524536e",
     "@effect/sql-pg": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@524536e",
     "@effect/vitest": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@524536e",
-    "better-auth": "^1.6.14",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^1.0.0-beta.22",
     "effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@524536e"
