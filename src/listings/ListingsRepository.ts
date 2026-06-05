@@ -28,8 +28,8 @@ export interface ListingRow {
 	furnished: boolean;
 	status: "avaiable" | "rented" | "inative" | null;
 	address: string;
-	createdAt: Date;
-	updatedAt: Date;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export interface ListingMediaRow {
@@ -38,7 +38,7 @@ export interface ListingMediaRow {
 	url: string;
 	type: "image" | "video";
 	order: number;
-	createdAt: Date;
+	createdAt: string;
 }
 
 export interface AddMediaParams {
@@ -60,6 +60,31 @@ export interface PaginatedResult<T> {
 	limit: number;
 	totalPages: number;
 }
+
+const toListingRow = (row: typeof listings.$inferSelect): ListingRow => ({
+	id: row.id,
+	landlordId: row.landlordId,
+	title: row.title,
+	description: row.description,
+	price: row.price,
+	rooms: row.rooms,
+	furnished: row.furnished,
+	status: row.status,
+	address: row.address,
+	createdAt: row.createdAt.toISOString(),
+	updatedAt: row.updatedAt.toISOString(),
+});
+
+const toMediaRow = (
+	row: typeof listingMedia.$inferSelect,
+): ListingMediaRow => ({
+	id: row.id,
+	listingId: row.listingId,
+	url: row.url,
+	type: row.type,
+	order: row.order,
+	createdAt: row.createdAt.toISOString(),
+});
 
 export class ListingRepository extends Context.Service<
 	ListingRepository,
@@ -111,7 +136,7 @@ export class ListingRepository extends Context.Service<
 								location: sql`ST_SetSRID(ST_MakePoint(${params.longitude}, ${params.latitude}), 4326)`,
 							})
 							.returning();
-						return rows[0]!;
+						return toListingRow(rows[0]!);
 					}),
 			);
 
@@ -123,7 +148,7 @@ export class ListingRepository extends Context.Service<
 							.from(listings)
 							.where(eq(listings.id, id))
 							.limit(1);
-						return Option.fromNullishOr(rows[0] ?? null);
+						return Option.fromNullishOr(rows[0] ? toListingRow(rows[0]) : null);
 					}),
 			);
 
@@ -150,8 +175,8 @@ export class ListingRepository extends Context.Service<
 							.where(eq(listingMedia.listingId, id))
 							.orderBy(listingMedia.order);
 						return Option.some({
-							...rows[0],
-							media,
+							...toListingRow(rows[0]),
+							media: media.map(toMediaRow),
 						});
 					}),
 			);
@@ -203,7 +228,7 @@ export class ListingRepository extends Context.Service<
 						const total = Number(totalRows[0]?.count ?? 0);
 
 						return {
-							data: rows,
+							data: rows.map(toListingRow),
 							total,
 							page,
 							limit,
@@ -238,7 +263,7 @@ export class ListingRepository extends Context.Service<
 						const total = Number(totalRows[0]?.count ?? 0);
 
 						return {
-							data: rows,
+							data: rows.map(toListingRow),
 							total,
 							page,
 							limit,
@@ -259,7 +284,7 @@ export class ListingRepository extends Context.Service<
 								order: params.order,
 							})
 							.returning();
-						return rows[0]!;
+						return toMediaRow(rows[0]!);
 					}),
 			);
 
@@ -297,7 +322,7 @@ export class ListingRepository extends Context.Service<
 							.where(eq(listings.id, id))
 							.returning();
 
-						return Option.fromNullishOr(rows[0] ?? null);
+						return Option.fromNullishOr(rows[0] ? toListingRow(rows[0]) : null);
 					}),
 			);
 

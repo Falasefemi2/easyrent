@@ -1,4 +1,3 @@
-// index.ts
 import { HttpApiBuilder, HttpApiScalar } from "effect/unstable/httpapi";
 import { Api } from "./src/auth/Api";
 import { Layer } from "effect";
@@ -13,9 +12,15 @@ import { ListingsApiHandlers } from "./src/listings/http";
 import { UsersRepository } from "./src/users/UsersRepository";
 import { TokenService } from "./src/auth/TokenService";
 import { ImageUploadService } from "./src/services/UploadThingService";
+import { RedisService } from "./src/services/RedisService.ts";
+import { CacheService } from "./src/services/CacheService.ts";
 
 // Base infrastructure layer — everything that other layers depend on
 const InfraLive = Layer.mergeAll(DatabaseLive, AuthConfig.layer);
+
+const RedisLive = RedisService.layer.pipe(Layer.provide(InfraLive));
+
+const CacheLive = CacheService.layer.pipe(Layer.provide(RedisLive));
 
 // Service layers that depend on infra
 const ServicesLive = Layer.mergeAll(
@@ -49,6 +54,8 @@ const AppLayer = HttpServerLayer.pipe(
 	Layer.provide(AuthLive),
 	Layer.provide(ServicesLive),
 	Layer.provide(RepositoriesLive),
+	Layer.provide(CacheLive),
+	Layer.provide(RedisLive),
 	Layer.provide(InfraLive),
 );
 

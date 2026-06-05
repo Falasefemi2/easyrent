@@ -15,6 +15,8 @@ import {
 	ImageUploadService,
 } from "../services/UploadThingService";
 import { ListingRepository } from "./ListingsRepository";
+import { CacheService } from "../services/CacheService";
+import { RedisService } from "../services/RedisService.ts";
 
 export const ListingsApiHandlers = HttpApiBuilder.group(
 	Api,
@@ -136,4 +138,6 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 	Layer.provide(AuthConfig.layer),
 	Layer.provide(DatabaseLive),
 	Layer.provide(BunServices.layer),
+	Layer.provide(Layer.provide(CacheService.layer, RedisService.layer)),
+	Layer.provide(RedisService.layer),
 );

@@ -22,6 +22,7 @@
 		"dotenv": "^17.4.2",
 		"drizzle-orm": "1.0.0-beta.20",
 		"effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@524536e",
+		"ioredis": "^5.11.1",
 		"jose": "^6.2.3"
 	},
 	"devDependencies": {

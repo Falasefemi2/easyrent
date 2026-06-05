@@ -18,8 +18,8 @@ const ListingSchema = Schema.Struct({
 	furnished: Schema.Boolean,
 	status: Schema.NullOr(Schema.Literals(["avaiable", "rented", "inative"])),
 	address: Schema.String,
-	createdAt: Schema.Date,
-	updatedAt: Schema.Date,
+	createdAt: Schema.String,
+	updatedAt: Schema.String,
 });
 
 const ListingWithMediaSchema = Schema.Struct({
@@ -31,7 +31,7 @@ const ListingWithMediaSchema = Schema.Struct({
 			url: Schema.String,
 			type: Schema.Literals(["image", "video"]),
 			order: Schema.Number,
-			createdAt: Schema.Date,
+			createdAt: Schema.String,
 		}),
 	),
 });

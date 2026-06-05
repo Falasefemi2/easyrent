@@ -12,6 +12,7 @@ import {
 	type PaginatedResult,
 	type PaginationParams,
 } from "./ListingsRepository";
+import { CACHE_TTL, CacheKeys, CacheService } from "../services/CacheService";
 
 export class ListingService extends Context.Service<
 	ListingService,
@@ -64,6 +65,7 @@ export class ListingService extends Context.Service<
 		Effect.gen(function* () {
 			const repo = yield* ListingRepository;
 			const imageUpload = yield* ImageUploadService;
+			const cache = yield* CacheService;
 
 			const assertOwner = (listing: ListingRow, landlordId: string) =>
 				listing.landlordId !== landlordId
@@ -76,31 +78,43 @@ export class ListingService extends Context.Service<
 
 			const create = Effect.fn("ListingService.create")(
 				(params: CreateListingParams): Effect.Effect<ListingRow> =>
-					repo.create(params).pipe(Effect.orDie),
+					Effect.gen(function* () {
+						const listing = yield* repo.create(params).pipe(Effect.orDie);
+						// New listing — invalidate all list caches
+						yield* cache.invalidateListings();
+						return listing;
+					}),
 			);
 
 			const getById = Effect.fn("ListingService.getById")(
 				(
 					id: string,
 				): Effect.Effect<
-					ListingRow & {
-						media: ListingMediaRow[];
-					},
+					ListingRow & { media: ListingMediaRow[] },
 					ListingNotFound
 				> =>
 					Effect.gen(function* () {
+						const key = CacheKeys.listing(id);
+
+						const cached = yield* cache.getJson<
+							ListingRow & { media: ListingMediaRow[] }
+						>(key);
+						if (cached) return cached;
+
 						const maybeListing = yield* repo
 							.findByIdWithMedia(id)
 							.pipe(Effect.orDie);
-						return yield* Option.match(maybeListing, {
+						const listing = yield* Option.match(maybeListing, {
 							onNone: () =>
 								Effect.fail(
-									new ListingNotFound({
-										message: `Listing ${id} not found`,
-									}),
+									new ListingNotFound({ message: `Listing ${id} not found` }),
 								),
 							onSome: Effect.succeed,
 						});
+
+						yield* cache.setJson(key, listing, CACHE_TTL.listing);
+
+						return listing;
 					}),
 			);
 
@@ -109,7 +123,21 @@ export class ListingService extends Context.Service<
 					pagination: PaginationParams,
 					filters?: { status?: "avaiable" | "rented" | "inative" },
 				): Effect.Effect<PaginatedResult<ListingRow>> =>
-					repo.findAll(pagination, filters).pipe(Effect.orDie),
+					Effect.gen(function* () {
+						const key = CacheKeys.listings(
+							pagination.page,
+							pagination.limit,
+							filters?.status,
+						);
+						const cached =
+							yield* cache.getJson<PaginatedResult<ListingRow>>(key);
+						if (cached) return cached;
+						const result = yield* repo
+							.findAll(pagination, filters)
+							.pipe(Effect.orDie);
+						yield* cache.setJson(key, result, CACHE_TTL.listings);
+						return result;
+					}),
 			);
 
 			const getMyListings = Effect.fn("ListingService.getMyListings")(
@@ -153,7 +181,7 @@ export class ListingService extends Context.Service<
 							params.filePath,
 						);
 
-						return yield* repo
+						const media = yield* repo
 							.addMedia({
 								listingId: params.listingId,
 								url,
@@ -161,6 +189,8 @@ export class ListingService extends Context.Service<
 								order: params.order,
 							})
 							.pipe(Effect.orDie);
+						yield* cache.invalidateListing(params.listingId);
+						return media;
 					}),
 			);
 
@@ -185,15 +215,16 @@ export class ListingService extends Context.Service<
 						yield* assertOwner(listing, landlordId);
 
 						const updated = yield* repo.update(id, params).pipe(Effect.orDie);
-						return yield* Option.match(updated, {
+						const result = yield* Option.match(updated, {
 							onNone: () =>
 								Effect.fail(
-									new ListingNotFound({
-										message: `Listing ${id} not found`,
-									}),
+									new ListingNotFound({ message: `Listing ${id} not found` }),
 								),
 							onSome: Effect.succeed,
 						});
+
+						yield* cache.invalidateListing(id);
+						return result;
 					}),
 			);
 
@@ -216,6 +247,7 @@ export class ListingService extends Context.Service<
 
 						yield* assertOwner(listing, landlordId);
 						yield* repo.delete(id).pipe(Effect.orDie);
+						yield* cache.invalidateListing(id);
 					}),
 			);
 

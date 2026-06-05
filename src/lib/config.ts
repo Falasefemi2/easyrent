@@ -12,6 +12,7 @@ export class EnvConfig extends Schema.Class<EnvConfig>("EnvConfig")({
 	CLOUDINARY_CLOUD_NAME: Schema.String,
 	CLOUDINARY_API_KEY: Schema.String,
 	CLOUDINARY_API_SECRET: Schema.String,
+	REDIS_URL: Schema.String,
 }) {}
 
 export const loadConfig = Schema.decodeUnknownExit(EnvConfig)(process.env).pipe(
