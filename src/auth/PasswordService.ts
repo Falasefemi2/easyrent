@@ -11,9 +11,7 @@ export class HashError extends Schema.TaggedErrorClass<HashError>()(
 export class PasswordService extends Context.Service<
 	PasswordService,
 	{
-		readonly hash: (
-			password: string,
-		) => Effect.Effect<string, HashError>;
+		readonly hash: (password: string) => Effect.Effect<string, HashError>;
 		readonly verify: (
 			hash: string,
 			password: string,
@@ -24,51 +22,31 @@ export class PasswordService extends Context.Service<
 		PasswordService,
 		Effect.gen(function* () {
 			const hash = Effect.fn("PasswordService.hash")(
-				(
-					password: string,
-				): Effect.Effect<string, HashError> =>
+				(password: string): Effect.Effect<string, HashError> =>
 					Effect.gen(function* () {
-						return yield* Effect.tryPromise(
-							{
-								try: () =>
-									argon2.hash(
-										password,
-										{
-											type: argon2.argon2id,
-										},
-									),
-								catch: (e) =>
-									new HashError(
-										{
-											message: `Password hashing failed: ${e}`,
-										},
-									),
-							},
-						);
+						return yield* Effect.tryPromise({
+							try: () =>
+								argon2.hash(password, {
+									type: argon2.argon2id,
+								}),
+							catch: (e) =>
+								new HashError({
+									message: `Password hashing failed: ${e}`,
+								}),
+						});
 					}),
 			);
 
 			const verify = Effect.fn("PasswordService.verify")(
-				(
-					hash_: string,
-					password: string,
-				): Effect.Effect<boolean, HashError> =>
+				(hash_: string, password: string): Effect.Effect<boolean, HashError> =>
 					Effect.gen(function* () {
-						return yield* Effect.tryPromise(
-							{
-								try: () =>
-									argon2.verify(
-										hash_,
-										password,
-									),
-								catch: (e) =>
-									new HashError(
-										{
-											message: `Password verification failed: ${e}`,
-										},
-									),
-							},
-						);
+						return yield* Effect.tryPromise({
+							try: () => argon2.verify(hash_, password),
+							catch: (e) =>
+								new HashError({
+									message: `Password verification failed: ${e}`,
+								}),
+						});
 					}),
 			);
 

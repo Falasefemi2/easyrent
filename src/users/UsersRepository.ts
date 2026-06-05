@@ -27,13 +27,8 @@ export class UsersRepository extends Context.Service<
 		Effect.gen(function* () {
 			const db = yield* PgDatabase;
 
-			const updateAvatar = Effect.fn(
-				"UsersRepository.updateAvatar",
-			)(
-				(
-					userId: string,
-					avatarUrl: string,
-				): DbEffect<void> =>
+			const updateAvatar = Effect.fn("UsersRepository.updateAvatar")(
+				(userId: string, avatarUrl: string): DbEffect<void> =>
 					Effect.gen(function* () {
 						yield* db
 							.update(users)
@@ -41,12 +36,7 @@ export class UsersRepository extends Context.Service<
 								avatarUrl,
 								updatedAt: new Date(),
 							})
-							.where(
-								eq(
-									users.id,
-									userId,
-								),
-							);
+							.where(eq(users.id, userId));
 					}),
 			);
 
@@ -68,16 +58,9 @@ export class UsersRepository extends Context.Service<
 								avatarUrl: users.avatarUrl,
 							})
 							.from(users)
-							.where(
-								eq(
-									users.id,
-									userId,
-								),
-							)
+							.where(eq(users.id, userId))
 							.limit(1);
-						return Option.fromNullishOr(
-							rows[0] ?? null,
-						);
+						return Option.fromNullishOr(rows[0] ?? null);
 					}),
 			);
 

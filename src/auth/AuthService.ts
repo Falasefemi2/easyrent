@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Option } from "effect";
 import { AuthRepository } from "./AuthRepository";
-import { PasswordService, HashError } from "./PasswordService";
+import { PasswordService, type HashError } from "./PasswordService";
 import { TokenService } from "./TokenService";
 import { AuthConfig } from "./AuthConfig";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
@@ -53,12 +53,10 @@ export class AuthService extends Context.Service<
 			const tokens = yield* TokenService;
 			const config = yield* AuthConfig;
 
-			const issueTokens = Effect.fn(
-				"AuthService.issueTokens",
-			)((userId: string, email: string) =>
-				Effect.gen(function* () {
-					const [accessToken, rawRefresh] =
-						yield* Effect.all([
+			const issueTokens = Effect.fn("AuthService.issueTokens")(
+				(userId: string, email: string) =>
+					Effect.gen(function* () {
+						const [accessToken, rawRefresh] = yield* Effect.all([
 							tokens.signAccessToken({
 								sub: userId,
 								email,
@@ -66,28 +64,22 @@ export class AuthService extends Context.Service<
 							tokens.generateRefreshToken(),
 						]);
 
-					const tokenHash =
-						tokens.hashToken(rawRefresh);
-					const expiresAt = new Date(
-						Date.now() +
-							config.refreshTokenTtlDays *
-								24 *
-								60 *
-								60 *
-								1000,
-					);
+						const tokenHash = tokens.hashToken(rawRefresh);
+						const expiresAt = new Date(
+							Date.now() + config.refreshTokenTtlDays * 24 * 60 * 60 * 1000,
+						);
 
-					yield* repo.storeRefreshToken({
-						userId,
-						tokenHash,
-						expiresAt,
-					});
+						yield* repo.storeRefreshToken({
+							userId,
+							tokenHash,
+							expiresAt,
+						});
 
-					return {
-						accessToken,
-						refreshToken: rawRefresh,
-					};
-				}),
+						return {
+							accessToken,
+							refreshToken: rawRefresh,
+						};
+					}),
 			);
 
 			const signUp = Effect.fn("AuthService.signUp")(
@@ -98,35 +90,23 @@ export class AuthService extends Context.Service<
 					fullname: string;
 				}): Effect.Effect<AuthTokens, SignUpError> =>
 					Effect.gen(function* () {
-						const existing =
-							yield* repo.findByEmail(
-								params.email,
-							);
+						const existing = yield* repo.findByEmail(params.email);
 
 						if (Option.isSome(existing)) {
-							return yield* new EmailAlreadyTaken(
-								{
-									message: `${params.email} is already registered`,
-								},
-							);
+							return yield* new EmailAlreadyTaken({
+								message: `${params.email} is already registered`,
+							});
 						}
 
-						const passwordHash =
-							yield* passwords.hash(
-								params.password,
-							);
-						const user =
-							yield* repo.createUser({
-								email: params.email,
-								phone: params.phone,
-								passwordHash,
-								fullname: params.fullname,
-							});
+						const passwordHash = yield* passwords.hash(params.password);
+						const user = yield* repo.createUser({
+							email: params.email,
+							phone: params.phone,
+							passwordHash,
+							fullname: params.fullname,
+						});
 
-						return yield* issueTokens(
-							user.id,
-							user.email,
-						);
+						return yield* issueTokens(user.id, user.email);
 					}),
 			);
 
@@ -136,160 +116,90 @@ export class AuthService extends Context.Service<
 					password: string;
 				}): Effect.Effect<AuthTokens, SignInError> =>
 					Effect.gen(function* () {
-						const maybeUser =
-							yield* repo.findByEmail(
-								params.email,
-							);
+						const maybeUser = yield* repo.findByEmail(params.email);
 
-						const user =
-							yield* Option.match(
-								maybeUser,
-								{
-									onNone: () =>
-										Effect.fail(
-											new InvalidCredentials(
-												{
-													message: "Invalid email or password",
-												},
-											),
-										),
-									onSome: Effect.succeed,
-								},
-							);
+						const user = yield* Option.match(maybeUser, {
+							onNone: () =>
+								Effect.fail(
+									new InvalidCredentials({
+										message: "Invalid email or password",
+									}),
+								),
+							onSome: Effect.succeed,
+						});
 
-						const valid =
-							yield* passwords.verify(
-								user.passwordHash,
-								params.password,
-							);
+						const valid = yield* passwords.verify(
+							user.passwordHash,
+							params.password,
+						);
 
 						if (!valid) {
-							return yield* new InvalidCredentials(
-								{
-									message: "Invalid email or password",
-								},
-							);
+							return yield* new InvalidCredentials({
+								message: "Invalid email or password",
+							});
 						}
 
-						return yield* issueTokens(
-							user.id,
-							user.email,
-						);
+						return yield* issueTokens(user.id, user.email);
 					}),
 			);
 
 			const refresh = Effect.fn("AuthService.refresh")(
-				(
-					rawRefreshToken: string,
-				): Effect.Effect<AuthTokens, RefreshError> =>
+				(rawRefreshToken: string): Effect.Effect<AuthTokens, RefreshError> =>
 					Effect.gen(function* () {
-						const tokenHash =
-							tokens.hashToken(
-								rawRefreshToken,
-							);
-						const maybeToken =
-							yield* repo.findRefreshToken(
-								tokenHash,
-							);
+						const tokenHash = tokens.hashToken(rawRefreshToken);
+						const maybeToken = yield* repo.findRefreshToken(tokenHash);
 
-						const storedToken =
-							yield* Option.match(
-								maybeToken,
-								{
-									onNone: () =>
-										Effect.fail(
-											new InvalidToken(
-												{
-													message: "Refresh token not found",
-												},
-											),
-										),
-									onSome: Effect.succeed,
-								},
-							);
+						const storedToken = yield* Option.match(maybeToken, {
+							onNone: () =>
+								Effect.fail(
+									new InvalidToken({
+										message: "Refresh token not found",
+									}),
+								),
+							onSome: Effect.succeed,
+						});
 
-						if (
-							storedToken.revokedAt !==
-							null
-						) {
+						if (storedToken.revokedAt !== null) {
 							// Reuse detected — revoke all tokens for this user (theft scenario)
-							yield* repo.revokeAllUserTokens(
-								storedToken.userId,
-							);
-							return yield* new InvalidToken(
-								{
-									message: "Refresh token already used",
-								},
-							);
+							yield* repo.revokeAllUserTokens(storedToken.userId);
+							return yield* new InvalidToken({
+								message: "Refresh token already used",
+							});
 						}
 
-						if (
-							storedToken.expiresAt <
-							new Date()
-						) {
-							return yield* new TokenExpired(
-								{
-									message: "Refresh token expired",
-								},
-							);
+						if (storedToken.expiresAt < new Date()) {
+							return yield* new TokenExpired({
+								message: "Refresh token expired",
+							});
 						}
 
-						yield* repo.revokeRefreshToken(
-							storedToken.id,
-						);
+						yield* repo.revokeRefreshToken(storedToken.id);
 
-						const maybeUser =
-							yield* repo.findById(
-								storedToken.userId,
-							);
-						const user =
-							yield* Option.match(
-								maybeUser,
-								{
-									onNone: () =>
-										Effect.fail(
-											new InvalidToken(
-												{
-													message: "User not found",
-												},
-											),
-										),
-									onSome: Effect.succeed,
-								},
-							);
+						const maybeUser = yield* repo.findById(storedToken.userId);
+						const user = yield* Option.match(maybeUser, {
+							onNone: () =>
+								Effect.fail(
+									new InvalidToken({
+										message: "User not found",
+									}),
+								),
+							onSome: Effect.succeed,
+						});
 
-						return yield* issueTokens(
-							user.id,
-							user.email,
-						);
+						return yield* issueTokens(user.id, user.email);
 					}),
 			);
 
 			const signOut = Effect.fn("AuthService.signOut")(
-				(
-					rawRefreshToken: string,
-				): Effect.Effect<void, SignOutError> =>
+				(rawRefreshToken: string): Effect.Effect<void, SignOutError> =>
 					Effect.gen(function* () {
-						const tokenHash =
-							tokens.hashToken(
-								rawRefreshToken,
-							);
-						const maybeToken =
-							yield* repo.findRefreshToken(
-								tokenHash,
-							);
+						const tokenHash = tokens.hashToken(rawRefreshToken);
+						const maybeToken = yield* repo.findRefreshToken(tokenHash);
 
-						yield* Option.match(
-							maybeToken,
-							{
-								onNone: () =>
-									Effect.void,
-								onSome: (t) =>
-									repo.revokeRefreshToken(
-										t.id,
-									),
-							},
-						);
+						yield* Option.match(maybeToken, {
+							onNone: () => Effect.void,
+							onSome: (t) => repo.revokeRefreshToken(t.id),
+						});
 					}),
 			);
 

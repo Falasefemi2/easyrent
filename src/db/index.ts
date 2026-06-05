@@ -1,5 +1,5 @@
 import { PgClient } from "@effect/sql-pg";
-import { Config, Context, Effect, Layer } from "effect";
+import { Config, Context, type Effect, Layer } from "effect";
 import * as DrizzleEffect from "drizzle-orm/effect-postgres";
 import type { EffectPgDatabase } from "drizzle-orm/effect-postgres";
 

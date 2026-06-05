@@ -49,31 +49,23 @@ export const AuthorizationLayer = Layer.effect(
 			) {
 				const token = Redacted.value(credential);
 
-				const payload = yield* tokens
-					.verifyAccessToken(token)
-					.pipe(
-						Effect.mapError(
-							(e) =>
-								new Unauthorized(
-									{
-										message: e.message,
-									},
-								),
-						),
-					);
+				const payload = yield* tokens.verifyAccessToken(token).pipe(
+					Effect.mapError(
+						(e) =>
+							new Unauthorized({
+								message: e.message,
+							}),
+					),
+				);
 
-				const maybeUser = yield* repo
-					.findById(payload.sub)
-					.pipe(
-						Effect.mapError(
-							() =>
-								new Unauthorized(
-									{
-										message: "User lookup failed",
-									},
-								),
-						),
-					);
+				const maybeUser = yield* repo.findById(payload.sub).pipe(
+					Effect.mapError(
+						() =>
+							new Unauthorized({
+								message: "User lookup failed",
+							}),
+					),
+				);
 
 				if (maybeUser._tag === "None") {
 					return yield* new Unauthorized({
@@ -81,21 +73,13 @@ export const AuthorizationLayer = Layer.effect(
 					});
 				}
 
-				return yield* Effect.provideService(
-					httpEffect,
-					CurrentUser,
-					{
-						userId: maybeUser.value.id,
-						email: maybeUser.value.email,
-					},
-				);
+				return yield* Effect.provideService(httpEffect, CurrentUser, {
+					userId: maybeUser.value.id,
+					email: maybeUser.value.email,
+				});
 			}),
 		});
 	}),
 ).pipe(
-	Layer.provide([
-		TokenService.layer,
-		AuthRepository.layer,
-		AuthConfig.layer,
-	]),
+	Layer.provide([TokenService.layer, AuthRepository.layer, AuthConfig.layer]),
 );

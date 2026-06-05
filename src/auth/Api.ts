@@ -12,6 +12,7 @@ import {
 	TokenExpired,
 } from "./AuthError";
 import { UsersApiGroup } from "../users/UsersApi";
+import { ListingsApiGroup } from "../listings/ListingsApi";
 
 const AuthTokenSchema = Schema.Struct({
 	accessToken: Schema.String,
@@ -23,22 +24,12 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 		HttpApiEndpoint.post("signUp", "/auth/sign-up", {
 			payload: Schema.Struct({
 				email: Schema.String.pipe(
-					Schema.check(
-						Schema.isPattern(
-							/^\S+@\S+\.\S+$/,
-						),
-					),
+					Schema.check(Schema.isPattern(/^\S+@\S+\.\S+$/)),
 				),
-				password: Schema.String.pipe(
-					Schema.check(Schema.isMinLength(8)),
-				),
+				password: Schema.String.pipe(Schema.check(Schema.isMinLength(8))),
 
 				phone: Schema.String.pipe(
-					Schema.check(
-						Schema.isPattern(
-							/^\+?[0-9]\d{7,14}$/,
-						),
-					),
+					Schema.check(Schema.isPattern(/^\+?[0-9]\d{7,14}$/)),
 				),
 				fullname: Schema.String.pipe(
 					Schema.check(Schema.isMinLength(2)),
@@ -53,15 +44,9 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 		HttpApiEndpoint.post("signIn", "/auth/sign-in", {
 			payload: Schema.Struct({
 				email: Schema.String.pipe(
-					Schema.check(
-						Schema.isPattern(
-							/^\S+@\S+\.\S+$/,
-						),
-					),
+					Schema.check(Schema.isPattern(/^\S+@\S+\.\S+$/)),
 				),
-				password: Schema.String.pipe(
-					Schema.check(Schema.isMinLength(8)),
-				),
+				password: Schema.String.pipe(Schema.check(Schema.isMinLength(8))),
 			}),
 			success: AuthTokenSchema,
 			error: [InvalidCredentials],
@@ -88,6 +73,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 export class Api extends HttpApi.make("api")
 	.add(AuthApiGroup)
 	.add(UsersApiGroup)
+	.add(ListingsApiGroup)
 	.annotateMerge(
 		OpenApi.annotations({
 			title: "Easy Rent API",

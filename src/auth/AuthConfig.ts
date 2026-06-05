@@ -18,12 +18,8 @@ export class AuthConfig extends Context.Service<AuthConfig, AuthConfigShape>()(
 		Effect.gen(function* () {
 			const config = yield* loadConfig;
 			return {
-				accessTokenSecret: base64ToUint8Array(
-					config.ACCESS_TOKEN_SECRET,
-				),
-				refreshTokenSecret: base64ToUint8Array(
-					config.REFRESH_TOKEN_SECRET,
-				),
+				accessTokenSecret: base64ToUint8Array(config.ACCESS_TOKEN_SECRET),
+				refreshTokenSecret: base64ToUint8Array(config.REFRESH_TOKEN_SECRET),
 				accessTokenTtlSeconds: parseAccessTokenExpiry(
 					config.ACCESS_TOKEN_EXPIRY,
 				),

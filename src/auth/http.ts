@@ -21,14 +21,10 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 				auth.signIn(payload).pipe(Effect.orDie),
 			)
 			.handle("refresh", ({ payload }) =>
-				auth
-					.refresh(payload.refreshToken)
-					.pipe(Effect.orDie),
+				auth.refresh(payload.refreshToken).pipe(Effect.orDie),
 			)
 			.handle("signOut", ({ payload }) =>
-				auth
-					.signOut(payload.refreshToken)
-					.pipe(Effect.orDie),
+				auth.signOut(payload.refreshToken).pipe(Effect.orDie),
 			);
 	}),
 ).pipe(

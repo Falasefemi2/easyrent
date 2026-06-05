@@ -8,7 +8,6 @@ import { TokenService } from "../auth/TokenService";
 import { AuthConfig } from "../auth/AuthConfig";
 import { DatabaseLive } from "../db";
 import { Api } from "../auth/Api";
-import type { PersistedFile } from "effect/unstable/http/Multipart";
 import {
 	ImageUploadError,
 	ImageUploadService,
@@ -25,29 +24,21 @@ export const UsersApiHandlers = HttpApiBuilder.group(
 				const imageUpload = yield* ImageUploadService;
 				const usersRepo = yield* UsersRepository;
 
-				const req =
-					yield* HttpServerRequest.HttpServerRequest;
+				const req = yield* HttpServerRequest.HttpServerRequest;
 
 				const persisted = yield* req.multipart.pipe(
 					Effect.mapError(
 						(e) =>
 							new ImageUploadError({
-								message: String(
-									e,
-								),
+								message: String(e),
 							}),
 					),
 				);
 
 				const fileField = persisted["file"];
-				const fileEntry = Array.isArray(fileField)
-					? fileField[0]
-					: fileField;
+				const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField;
 
-				if (
-					!fileEntry ||
-					typeof fileEntry === "string"
-				) {
+				if (!fileEntry || typeof fileEntry === "string") {
 					return yield* new ImageUploadError({
 						message: "No file uploaded",
 					});
