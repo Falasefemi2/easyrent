@@ -47,10 +47,38 @@ const CreateListingPayload = Schema.Struct({
 	address: Schema.String,
 });
 
+const PaginationSchema = Schema.Struct({
+	page: Schema.optional(
+		Schema.NumberFromString.pipe(
+			Schema.check(Schema.isGreaterThanOrEqualTo(1)),
+		),
+	),
+	limit: Schema.optional(
+		Schema.NumberFromString.pipe(
+			Schema.check(Schema.isGreaterThanOrEqualTo(1)),
+			Schema.check(Schema.isLessThanOrEqualTo(100)),
+		),
+	),
+});
+
+const PaginatedListingSchema = Schema.Struct({
+	data: Schema.Array(ListingSchema),
+	total: Schema.Number,
+	page: Schema.Number,
+	limit: Schema.Number,
+	totalPages: Schema.Number,
+});
+
 export class ListingsApiGroup extends HttpApiGroup.make("listings")
 	.add(
 		HttpApiEndpoint.get("list", "/listings", {
-			success: Schema.Array(ListingSchema),
+			query: Schema.Struct({
+				...PaginationSchema.fields,
+				status: Schema.optional(
+					Schema.Literals(["avaiable", "rented", "inative"]),
+				),
+			}),
+			success: PaginatedListingSchema,
 		}),
 	)
 	.add(
@@ -111,6 +139,7 @@ export class ListingsApiGroup extends HttpApiGroup.make("listings")
 	)
 	.add(
 		HttpApiEndpoint.get("myListings", "/listings/my", {
-			success: Schema.Array(ListingSchema),
+			query: PaginationSchema,
+			success: PaginatedListingSchema,
 		}).middleware(Authorization),
 	) {}

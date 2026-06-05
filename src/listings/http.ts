@@ -23,7 +23,19 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 		const listingsService = yield* ListingService;
 
 		return handlers
-			.handle("list", () => listingsService.getAll().pipe(Effect.orDie))
+			.handle("list", ({ query }) =>
+				listingsService
+					.getAll(
+						{
+							page: query.page ?? 1,
+							limit: query.limit ?? 20,
+						},
+						{
+							status: query.status,
+						},
+					)
+					.pipe(Effect.orDie),
+			)
 			.handle("getById", ({ params }) =>
 				listingsService
 					.getById(params.id)
@@ -103,11 +115,14 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 						.pipe(Effect.catchTag("ListingNotFound", Effect.die));
 				}),
 			)
-			.handle("myListings", () =>
+			.handle("myListings", ({ query }) =>
 				Effect.gen(function* () {
 					const user = yield* CurrentUser;
 					return yield* listingsService
-						.getMyListings(user.userId)
+						.getMyListings(user.userId, {
+							page: query.page ?? 1,
+							limit: query.limit ?? 20,
+						})
 						.pipe(Effect.orDie);
 				}),
 			);

@@ -2,7 +2,7 @@ import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
 import { Effect, Context, Option, Layer } from "effect";
 import { PgDatabase } from "../db";
 import { listingMedia, listings } from "../db/schema";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, count, desc } from "drizzle-orm";
 
 type DbEffect<A> = Effect.Effect<A, EffectDrizzleQueryError>;
 
@@ -48,6 +48,19 @@ export interface AddMediaParams {
 	order: number;
 }
 
+export interface PaginationParams {
+	page: number;
+	limit: number;
+}
+
+export interface PaginatedResult<T> {
+	data: T[];
+	total: number;
+	page: number;
+	limit: number;
+	totalPages: number;
+}
+
 export class ListingRepository extends Context.Service<
 	ListingRepository,
 	{
@@ -56,12 +69,18 @@ export class ListingRepository extends Context.Service<
 		readonly findByIdWithMedia: (
 			id: string,
 		) => DbEffect<Option.Option<ListingRow & { media: ListingMediaRow[] }>>;
-		readonly findAll: (filters?: {
-			status?: "avaiable" | "rented" | "inative";
-			minPrice?: number;
-			maxPrice?: number;
-		}) => DbEffect<ListingRow[]>;
-		readonly findByLandlord: (landlordId: string) => DbEffect<ListingRow[]>;
+		readonly findAll: (
+			pagination: PaginationParams,
+			filters?: {
+				status?: "avaiable" | "rented" | "inative";
+				minPrice?: number;
+				maxPrice?: number;
+			},
+		) => DbEffect<PaginatedResult<ListingRow>>;
+		readonly findByLandlord: (
+			landlordId: string,
+			pagination: PaginationParams,
+		) => DbEffect<PaginatedResult<ListingRow>>;
 		readonly addMedia: (params: AddMediaParams) => DbEffect<ListingMediaRow>;
 		readonly deleteMedia: (mediaId: string) => DbEffect<void>;
 		readonly update: (
@@ -138,32 +157,93 @@ export class ListingRepository extends Context.Service<
 			);
 
 			const findAll = Effect.fn("ListingsRepository.findAll")(
-				(filters?: {
-					status?: "avaiable" | "rented" | "inative";
-					minPrice?: number;
-					maxPrice?: number;
-				}): DbEffect<ListingRow[]> =>
+				(
+					pagination: PaginationParams,
+					filters?: {
+						status?: "avaiable" | "rented" | "inative";
+						minPrice?: number;
+						maxPrice?: number;
+					},
+				): DbEffect<PaginatedResult<ListingRow>> =>
 					Effect.gen(function* () {
-						const query = db.select().from(listings);
+						const { page, limit } = pagination;
+						const offset = (page - 1) * limit;
 						const conditions = [];
 
 						if (filters?.status) {
 							conditions.push(eq(listings.status, filters.status));
 						}
 
-						return yield* conditions.length > 0
-							? query.where(and(...conditions))
-							: query;
+						const whereClause =
+							conditions.length > 0 ? and(...conditions) : undefined;
+
+						const [rows, totalRows] = yield* Effect.all([
+							whereClause
+								? db
+										.select()
+										.from(listings)
+										.where(whereClause)
+										.limit(limit)
+										.offset(offset)
+										.orderBy(desc(listings.createdAt))
+								: db
+										.select()
+										.from(listings)
+										.limit(limit)
+										.offset(offset)
+										.orderBy(desc(listings.createdAt)),
+							whereClause
+								? db
+										.select({ count: count() })
+										.from(listings)
+										.where(whereClause)
+								: db.select({ count: count() }).from(listings),
+						]);
+
+						const total = Number(totalRows[0]?.count ?? 0);
+
+						return {
+							data: rows,
+							total,
+							page,
+							limit,
+							totalPages: Math.ceil(total / limit),
+						};
 					}),
 			);
 
 			const findByLandlord = Effect.fn("ListingsRepository.findByLandlord")(
-				(landlordId: string): DbEffect<ListingRow[]> =>
+				(
+					landlordId: string,
+					pagination: PaginationParams,
+				): DbEffect<PaginatedResult<ListingRow>> =>
 					Effect.gen(function* () {
-						return yield* db
-							.select()
-							.from(listings)
-							.where(eq(listings.landlordId, landlordId));
+						const { page, limit } = pagination;
+						const offset = (page - 1) * limit;
+
+						const [rows, totalRows] = yield* Effect.all([
+							db
+								.select()
+								.from(listings)
+								.where(eq(listings.landlordId, landlordId))
+								.limit(limit)
+								.offset(offset)
+								.orderBy(desc(listings.createdAt)),
+							db
+								.select({ count: count() })
+								.from(listings)
+								.where(eq(listings.landlordId, landlordId)),
+						]);
+
+						const total = Number(totalRows[0]?.count ?? 0);
+
+						return {
+							data: rows,
+							total,
+							page,
+							limit,
+							totalPages: Math.ceil(total / limit),
+						};
 					}),
 			);
 

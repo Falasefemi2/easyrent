@@ -1,4 +1,3 @@
-// src/listings/ListingsService.ts
 import { Context, Effect, Layer, Option } from "effect";
 import {
 	ImageUploadService,
@@ -10,6 +9,8 @@ import {
 	type CreateListingParams,
 	type ListingMediaRow,
 	type ListingRow,
+	type PaginatedResult,
+	type PaginationParams,
 } from "./ListingsRepository";
 
 export class ListingService extends Context.Service<
@@ -24,11 +25,15 @@ export class ListingService extends Context.Service<
 			ListingNotFound
 		>;
 
-		readonly getAll: (filters?: {
-			status?: "avaiable" | "rented" | "inative";
-		}) => Effect.Effect<ListingRow[]>;
+		readonly getAll: (
+			pagination: PaginationParams,
+			filters?: { status?: "avaiable" | "rented" | "inative" },
+		) => Effect.Effect<PaginatedResult<ListingRow>>;
 
-		readonly getMyListings: (landlordId: string) => Effect.Effect<ListingRow[]>;
+		readonly getMyListings: (
+			landlordId: string,
+			pagination: PaginationParams,
+		) => Effect.Effect<PaginatedResult<ListingRow>>;
 
 		readonly uploadMedia: (params: {
 			listingId: string;
@@ -100,15 +105,19 @@ export class ListingService extends Context.Service<
 			);
 
 			const getAll = Effect.fn("ListingService.getAll")(
-				(filters?: {
-					status?: "avaiable" | "rented" | "inative";
-				}): Effect.Effect<ListingRow[]> =>
-					repo.findAll(filters).pipe(Effect.orDie),
+				(
+					pagination: PaginationParams,
+					filters?: { status?: "avaiable" | "rented" | "inative" },
+				): Effect.Effect<PaginatedResult<ListingRow>> =>
+					repo.findAll(pagination, filters).pipe(Effect.orDie),
 			);
 
 			const getMyListings = Effect.fn("ListingService.getMyListings")(
-				(landlordId: string): Effect.Effect<ListingRow[]> =>
-					repo.findByLandlord(landlordId).pipe(Effect.orDie),
+				(
+					landlordId: string,
+					pagination: PaginationParams,
+				): Effect.Effect<PaginatedResult<ListingRow>> =>
+					repo.findByLandlord(landlordId, pagination).pipe(Effect.orDie),
 			);
 
 			const uploadMedia = Effect.fn("ListingService.uploadMedia")(
