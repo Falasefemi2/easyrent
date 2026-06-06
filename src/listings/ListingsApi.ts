@@ -20,6 +20,7 @@ const ListingSchema = Schema.Struct({
 	address: Schema.String,
 	createdAt: Schema.String,
 	updatedAt: Schema.String,
+	favoriteCount: Schema.Number,
 });
 
 const ListingWithMediaSchema = Schema.Struct({

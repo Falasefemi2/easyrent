@@ -14,6 +14,7 @@ import { TokenService } from "./src/auth/TokenService";
 import { ImageUploadService } from "./src/services/UploadThingService";
 import { RedisService } from "./src/services/RedisService.ts";
 import { CacheService } from "./src/services/CacheService.ts";
+import { FavoritesApiHandlers } from "./src/favorites/http.ts";
 
 // Base infrastructure layer — everything that other layers depend on
 const InfraLive = Layer.mergeAll(DatabaseLive, AuthConfig.layer);
@@ -39,7 +40,12 @@ const AuthLive = AuthorizationLayer.pipe(Layer.provide(ServicesLive));
 const ApiRoutes = HttpApiBuilder.layer(Api, {
 	openapiPath: "/openapi.json",
 }).pipe(
-	Layer.provide([AuthApiHandlers, UsersApiHandlers, ListingsApiHandlers]),
+	Layer.provide([
+		AuthApiHandlers,
+		UsersApiHandlers,
+		ListingsApiHandlers,
+		FavoritesApiHandlers,
+	]),
 );
 
 const DocsRoute = HttpApiScalar.layer(Api, { path: "/docs" });

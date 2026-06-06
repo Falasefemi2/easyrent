@@ -1,8 +1,8 @@
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
 import { Effect, Context, Option, Layer } from "effect";
 import { PgDatabase } from "../db";
-import { listingMedia, listings } from "../db/schema";
-import { eq, sql, and, count, desc } from "drizzle-orm";
+import { favorites, listingMedia, listings } from "../db/schema";
+import { eq, sql, and, count, desc, inArray } from "drizzle-orm";
 
 type DbEffect<A> = Effect.Effect<A, EffectDrizzleQueryError>;
 
@@ -30,6 +30,7 @@ export interface ListingRow {
 	address: string;
 	createdAt: string;
 	updatedAt: string;
+	favoriteCount: number;
 }
 
 export interface ListingMediaRow {
@@ -61,7 +62,10 @@ export interface PaginatedResult<T> {
 	totalPages: number;
 }
 
-const toListingRow = (row: typeof listings.$inferSelect): ListingRow => ({
+const toListingRow = (
+	row: typeof listings.$inferSelect,
+	favoriteCount = 0,
+): ListingRow => ({
 	id: row.id,
 	landlordId: row.landlordId,
 	title: row.title,
@@ -73,6 +77,7 @@ const toListingRow = (row: typeof listings.$inferSelect): ListingRow => ({
 	address: row.address,
 	createdAt: row.createdAt.toISOString(),
 	updatedAt: row.updatedAt.toISOString(),
+	favoriteCount,
 });
 
 const toMediaRow = (
@@ -143,12 +148,19 @@ export class ListingRepository extends Context.Service<
 			const findById = Effect.fn("ListRepository.findById")(
 				(id: string): DbEffect<Option.Option<ListingRow>> =>
 					Effect.gen(function* () {
-						const rows = yield* db
-							.select()
-							.from(listings)
-							.where(eq(listings.id, id))
-							.limit(1);
-						return Option.fromNullishOr(rows[0] ? toListingRow(rows[0]) : null);
+						const [rows, countRows] = yield* Effect.all([
+							db.select().from(listings).where(eq(listings.id, id)).limit(1),
+							db
+								.select({ count: count() })
+								.from(favorites)
+								.where(eq(favorites.listingId, id)),
+						]);
+
+						if (!rows[0]) return Option.none();
+
+						return Option.some(
+							toListingRow(rows[0], Number(countRows[0]?.count ?? 0)),
+						);
 					}),
 			);
 
@@ -225,10 +237,27 @@ export class ListingRepository extends Context.Service<
 								: db.select({ count: count() }).from(listings),
 						]);
 
+						const listingIds = rows.map((r) => r.id);
+						const countRows =
+							listingIds.length > 0
+								? yield* db
+										.select({ listingId: favorites.listingId, count: count() })
+										.from(favorites)
+										.where(inArray(favorites.listingId, listingIds))
+										.groupBy(favorites.listingId)
+								: [];
+
+						const countMap = Object.fromEntries(
+							countRows.map((r) => [r.listingId, Number(r.count)]),
+						);
+
 						const total = Number(totalRows[0]?.count ?? 0);
 
 						return {
-							data: rows.map(toListingRow),
+							data: rows.map((r) => ({
+								...toListingRow(r),
+								favoriteCount: countMap[r.id] ?? 0,
+							})),
 							total,
 							page,
 							limit,
@@ -320,7 +349,16 @@ export class ListingRepository extends Context.Service<
 							.where(eq(listings.id, id))
 							.returning();
 
-						return Option.fromNullishOr(rows[0] ? toListingRow(rows[0]) : null);
+						const countRows = yield* db
+							.select({ count: count() })
+							.from(favorites)
+							.where(eq(favorites.listingId, id));
+
+						return Option.fromNullishOr(
+							rows[0]
+								? toListingRow(rows[0], Number(countRows[0]?.count ?? 0))
+								: null,
+						);
 					}),
 			);
 

@@ -13,6 +13,7 @@ import {
 } from "./AuthError";
 import { UsersApiGroup } from "../users/UsersApi";
 import { ListingsApiGroup } from "../listings/ListingsApi";
+import { FavoritesApiGroup } from "../favorites/FavoritesApi";
 
 const AuthTokenSchema = Schema.Struct({
 	accessToken: Schema.String,
@@ -74,6 +75,7 @@ export class Api extends HttpApi.make("api")
 	.add(AuthApiGroup)
 	.add(UsersApiGroup)
 	.add(ListingsApiGroup)
+	.add(FavoritesApiGroup)
 	.annotateMerge(
 		OpenApi.annotations({
 			title: "Easy Rent API",
