@@ -290,9 +290,7 @@ export class ListingRepository extends Context.Service<
 
 			const deleteMedia = Effect.fn("ListingsRepository.deleteMedia")(
 				(mediaId: string): DbEffect<void> =>
-					Effect.gen(function* () {
-						yield* db.delete(listingMedia).where(eq(listingMedia.id, mediaId));
-					}),
+					db.delete(listingMedia).where(eq(listingMedia.id, mediaId)),
 			);
 
 			const update = Effect.fn("ListingsRepository.update")(
@@ -328,9 +326,7 @@ export class ListingRepository extends Context.Service<
 
 			const deleteListing = Effect.fn("ListingsRepository.delete")(
 				(id: string): DbEffect<void> =>
-					Effect.gen(function* () {
-						yield* db.delete(listings).where(eq(listings.id, id));
-					}),
+					db.delete(listings).where(eq(listings.id, id)),
 			);
 
 			return {

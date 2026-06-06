@@ -29,15 +29,13 @@ export class UsersRepository extends Context.Service<
 
 			const updateAvatar = Effect.fn("UsersRepository.updateAvatar")(
 				(userId: string, avatarUrl: string): DbEffect<void> =>
-					Effect.gen(function* () {
-						yield* db
-							.update(users)
-							.set({
-								avatarUrl,
-								updatedAt: new Date(),
-							})
-							.where(eq(users.id, userId));
-					}),
+					db
+						.update(users)
+						.set({
+							avatarUrl,
+							updatedAt: new Date(),
+						})
+						.where(eq(users.id, userId)),
 			);
 
 			const findById = Effect.fn("UsersRepository.findById")(

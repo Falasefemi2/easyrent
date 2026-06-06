@@ -40,12 +40,12 @@ export class CacheService extends Context.Service<
 				<T>(key: string): Effect.Effect<T | null> =>
 					Effect.gen(function* () {
 						const raw = yield* redis.get(key).pipe(
-							Effect.catchTag("RedisError", (e) => {
-								Effect.runFork(
-									Effect.logWarning(`Cache GET failed: ${e.message}`),
-								);
-								return Effect.succeed(null);
-							}),
+							Effect.catchTag("RedisError", (e) =>
+								Effect.gen(function* () {
+									yield* Effect.logWarning(`Cache GET failed: ${e.message}`);
+									return null;
+								}),
+							),
 						);
 
 						if (!raw) return null;
@@ -73,14 +73,15 @@ export class CacheService extends Context.Service<
 
 						if (!serialized) return;
 
-						yield* redis.set(key, serialized, ttlSeconds).pipe(
-							Effect.catchTag("RedisError", (e) => {
-								Effect.runFork(
-									Effect.logWarning(`Cache SET failed: ${e.message}`),
-								);
-								return Effect.void;
-							}),
-						);
+						yield* redis
+							.set(key, serialized, ttlSeconds)
+							.pipe(
+								Effect.catchTag("RedisError", (e) =>
+									Effect.logWarning(`Cache SET failed: ${e.message}`).pipe(
+										Effect.asVoid,
+									),
+								),
+							);
 					}),
 			);
 

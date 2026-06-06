@@ -98,12 +98,10 @@ export class AuthRepository extends Context.Service<
 					tokenHash: string;
 					expiresAt: Date;
 				}): DbEffect<void> =>
-					Effect.gen(function* () {
-						yield* db.insert(refreshTokens).values({
-							userId: params.userId,
-							tokenHash: params.tokenHash,
-							expiresAt: params.expiresAt,
-						});
+					db.insert(refreshTokens).values({
+						userId: params.userId,
+						tokenHash: params.tokenHash,
+						expiresAt: params.expiresAt,
 					}),
 			);
 
@@ -121,33 +119,29 @@ export class AuthRepository extends Context.Service<
 
 			const revokeRefreshToken = Effect.fn("AuthRepository.revokeRefreshToken")(
 				(id: string): DbEffect<void> =>
-					Effect.gen(function* () {
-						yield* db
-							.update(refreshTokens)
-							.set({
-								revokedAt: new Date(),
-							})
-							.where(eq(refreshTokens.id, id));
-					}),
+					db
+						.update(refreshTokens)
+						.set({
+							revokedAt: new Date(),
+						})
+						.where(eq(refreshTokens.id, id)),
 			);
 
 			const revokeAllUserTokens = Effect.fn(
 				"AuthRepository.revokeAllUserTokens",
 			)(
 				(userId: string): DbEffect<void> =>
-					Effect.gen(function* () {
-						yield* db
-							.update(refreshTokens)
-							.set({
-								revokedAt: new Date(),
-							})
-							.where(
-								and(
-									eq(refreshTokens.userId, userId),
-									isNull(refreshTokens.revokedAt),
-								),
-							);
-					}),
+					db
+						.update(refreshTokens)
+						.set({
+							revokedAt: new Date(),
+						})
+						.where(
+							and(
+								eq(refreshTokens.userId, userId),
+								isNull(refreshTokens.revokedAt),
+							),
+						),
 			);
 
 			return {

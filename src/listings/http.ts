@@ -72,11 +72,9 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 					const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField;
 
 					if (!fileEntry || typeof fileEntry === "string") {
-						return yield* Effect.fail(
-							new ImageUploadError({
-								message: "No file uploaded",
-							}),
-						);
+						return yield* new ImageUploadError({
+							message: "No file uploaded",
+						});
 					}
 
 					const typeField = persisted["type"];
