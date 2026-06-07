@@ -2,7 +2,7 @@ import { HttpApiBuilder, HttpApiScalar } from "effect/unstable/httpapi";
 import { Api } from "./src/auth/Api";
 import { Layer } from "effect";
 import { AuthApiHandlers } from "./src/auth/http";
-import { HttpRouter } from "effect/unstable/http";
+import { HttpMiddleware, HttpRouter } from "effect/unstable/http";
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
 import { AuthorizationLayer } from "./src/auth/Authorization";
 import { AuthConfig } from "./src/auth/AuthConfig";
@@ -52,9 +52,24 @@ const DocsRoute = HttpApiScalar.layer(Api, { path: "/docs" });
 
 const AllRoutes = Layer.mergeAll(ApiRoutes, DocsRoute);
 
-const HttpServerLayer = HttpRouter.serve(AllRoutes).pipe(
-	Layer.provide(BunHttpServer.layer({ port: 3000 })),
-);
+const HttpServerLayer = HttpRouter.serve(AllRoutes, {
+	middleware: HttpMiddleware.cors({
+		allowedOrigins: ["http://localhost:3001"],
+		allowedMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+		allowedHeaders: [
+			"Content-Type",
+			"Authorization",
+			"traceparent",
+			"tracestate",
+			"b3",
+			"x-b3-traceid",
+			"x-b3-spanid",
+			"x-b3-sampled",
+			"baggage",
+		],
+		credentials: true,
+	}),
+}).pipe(Layer.provide(BunHttpServer.layer({ port: 3000 })));
 
 const AppLayer = HttpServerLayer.pipe(
 	Layer.provide(AuthLive),
