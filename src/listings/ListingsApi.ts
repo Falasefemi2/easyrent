@@ -21,6 +21,9 @@ const ListingSchema = Schema.Struct({
 	createdAt: Schema.String,
 	updatedAt: Schema.String,
 	favoriteCount: Schema.Number,
+	latitude: Schema.NullOr(Schema.Number),
+	longitude: Schema.NullOr(Schema.Number),
+	coverImage: Schema.NullOr(Schema.String),
 });
 
 const ListingWithMediaSchema = Schema.Struct({

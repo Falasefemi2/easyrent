@@ -19,7 +19,22 @@ export interface FavoriteListingRow extends ListingRow {
 }
 
 const toListingRow = (
-	row: typeof listings.$inferSelect,
+	row: {
+		id: string;
+		landlordId: string;
+		title: string;
+		description: string;
+		price: string;
+		rooms: number | null;
+		furnished: boolean;
+		status: "avaiable" | "rented" | "inative" | null;
+		address: string;
+		createdAt: Date;
+		updatedAt: Date;
+		latitude?: number | null;
+		longitude?: number | null;
+		coverImage?: string | null;
+	},
 	favoriteCount = 0,
 ): ListingRow => ({
 	id: row.id,
@@ -34,6 +49,9 @@ const toListingRow = (
 	createdAt: row.createdAt.toISOString(),
 	updatedAt: row.updatedAt.toISOString(),
 	favoriteCount,
+	latitude: row.latitude ?? null,
+	longitude: row.longitude ?? null,
+	coverImage: row.coverImage ?? null,
 });
 
 const toMediaRow = (

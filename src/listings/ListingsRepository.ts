@@ -31,6 +31,9 @@ export interface ListingRow {
 	createdAt: string;
 	updatedAt: string;
 	favoriteCount: number;
+	latitude: number | null;
+	longitude: number | null;
+	coverImage: string | null;
 }
 
 export interface ListingMediaRow {
@@ -62,8 +65,25 @@ export interface PaginatedResult<T> {
 	totalPages: number;
 }
 
+interface ListingSelectRow {
+	id: string;
+	landlordId: string;
+	title: string;
+	description: string;
+	price: string;
+	rooms: number | null;
+	furnished: boolean;
+	status: "avaiable" | "rented" | "inative" | null;
+	address: string;
+	createdAt: Date;
+	updatedAt: Date;
+	latitude?: number | null;
+	longitude?: number | null;
+	coverImage?: string | null;
+}
+
 const toListingRow = (
-	row: typeof listings.$inferSelect,
+	row: ListingSelectRow,
 	favoriteCount = 0,
 ): ListingRow => ({
 	id: row.id,
@@ -78,6 +98,9 @@ const toListingRow = (
 	createdAt: row.createdAt.toISOString(),
 	updatedAt: row.updatedAt.toISOString(),
 	favoriteCount,
+	latitude: row.latitude ?? null,
+	longitude: row.longitude ?? null,
+	coverImage: row.coverImage ?? null,
 });
 
 const toMediaRow = (
@@ -214,17 +237,33 @@ export class ListingRepository extends Context.Service<
 						const whereClause =
 							conditions.length > 0 ? and(...conditions) : undefined;
 
+						const selectFields = {
+							id: listings.id,
+							landlordId: listings.landlordId,
+							title: listings.title,
+							description: listings.description,
+							price: listings.price,
+							rooms: listings.rooms,
+							furnished: listings.furnished,
+							status: listings.status,
+							address: listings.address,
+							createdAt: listings.createdAt,
+							updatedAt: listings.updatedAt,
+							latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
+							longitude: sql<number>`ST_X(${listings.location}::geometry)`,
+						};
+
 						const [rows, totalRows] = yield* Effect.all([
 							whereClause
 								? db
-										.select()
+										.select(selectFields)
 										.from(listings)
 										.where(whereClause)
 										.limit(limit)
 										.offset(offset)
 										.orderBy(desc(listings.createdAt))
 								: db
-										.select()
+										.select(selectFields)
 										.from(listings)
 										.limit(limit)
 										.offset(offset)
@@ -251,13 +290,31 @@ export class ListingRepository extends Context.Service<
 							countRows.map((r) => [r.listingId, Number(r.count)]),
 						);
 
+						const coverRows =
+							listingIds.length > 0
+								? yield* db
+										.selectDistinctOn([listingMedia.listingId], {
+											listingId: listingMedia.listingId,
+											url: listingMedia.url,
+										})
+										.from(listingMedia)
+										.where(inArray(listingMedia.listingId, listingIds))
+										.orderBy(listingMedia.listingId, listingMedia.order)
+								: [];
+
+						const coverMap = Object.fromEntries(
+							coverRows.map((r) => [r.listingId, r.url]),
+						);
+
 						const total = Number(totalRows[0]?.count ?? 0);
 
 						return {
-							data: rows.map((r) => ({
-								...toListingRow(r),
-								favoriteCount: countMap[r.id] ?? 0,
-							})),
+							data: rows.map((r) =>
+								toListingRow(
+									{ ...r, coverImage: coverMap[r.id] ?? null },
+									countMap[r.id] ?? 0,
+								),
+							),
 							total,
 							page,
 							limit,
