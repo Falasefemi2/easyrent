@@ -27,6 +27,9 @@ const FavoriteListingSchema = Schema.Struct({
 	media: Schema.Array(MediaSchema),
 	favoriteCount: Schema.Number,
 	favoritedAt: Schema.String,
+	latitude: Schema.NullOr(Schema.Number),
+	longitude: Schema.NullOr(Schema.Number),
+	coverImage: Schema.NullOr(Schema.String),
 });
 
 const PaginatedFavoritesSchema = Schema.Struct({

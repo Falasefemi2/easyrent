@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect";
-import { eq, and, desc, count } from "drizzle-orm";
+import { eq, and, desc, count, inArray, sql } from "drizzle-orm";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
 import type {
 	ListingMediaRow,
@@ -130,7 +130,6 @@ export class FavoritesRepository extends Context.Service<
 						const { page, limit } = pagination;
 						const offset = (page - 1) * limit;
 
-						// Get favorited listing IDs with pagination
 						const [favRows, totalRows] = yield* Effect.all([
 							db
 								.select()
@@ -151,40 +150,85 @@ export class FavoritesRepository extends Context.Service<
 							return { data: [], total, page, limit, totalPages: 0 };
 						}
 
-						// const listingIds = favRows.map((f) => f.listingId);
+						const listingIds = favRows.map((f) => f.listingId);
 
-						// Fetch full listing details + media + favorite count for each
-						const data = yield* Effect.all(
-							favRows.map((fav) =>
-								Effect.gen(function* () {
-									const [listingRows, mediaRows, countRows] = yield* Effect.all(
-										[
-											db
-												.select()
-												.from(listings)
-												.where(eq(listings.id, fav.listingId))
-												.limit(1),
-											db
-												.select()
-												.from(listingMedia)
-												.where(eq(listingMedia.listingId, fav.listingId))
-												.orderBy(listingMedia.order),
-											db
-												.select({ count: count() })
-												.from(favorites)
-												.where(eq(favorites.listingId, fav.listingId)),
-										],
-									);
+						// Fetch listings with lat/lng extracted
+						const listingRows = yield* db
+							.select({
+								id: listings.id,
+								landlordId: listings.landlordId,
+								title: listings.title,
+								description: listings.description,
+								price: listings.price,
+								rooms: listings.rooms,
+								furnished: listings.furnished,
+								status: listings.status,
+								address: listings.address,
+								createdAt: listings.createdAt,
+								updatedAt: listings.updatedAt,
+								latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
+								longitude: sql<number>`ST_X(${listings.location}::geometry)`,
+							})
+							.from(listings)
+							.where(inArray(listings.id, listingIds));
 
-									return {
-										...toListingRow(listingRows[0]!),
-										media: mediaRows.map(toMediaRow),
-										favoriteCount: Number(countRows[0]?.count ?? 0),
-										favoritedAt: fav.createdAt.toISOString(),
-									} satisfies FavoriteListingRow;
-								}),
-							),
+						// Fetch media
+						const mediaRows = yield* db
+							.select()
+							.from(listingMedia)
+							.where(inArray(listingMedia.listingId, listingIds))
+							.orderBy(listingMedia.order);
+
+						// Fetch favorite counts
+						const countRows = yield* db
+							.select({ listingId: favorites.listingId, count: count() })
+							.from(favorites)
+							.where(inArray(favorites.listingId, listingIds))
+							.groupBy(favorites.listingId);
+
+						// Fetch cover images
+						const coverRows = yield* db
+							.selectDistinctOn([listingMedia.listingId], {
+								listingId: listingMedia.listingId,
+								url: listingMedia.url,
+							})
+							.from(listingMedia)
+							.where(inArray(listingMedia.listingId, listingIds))
+							.orderBy(listingMedia.listingId, listingMedia.order);
+
+						const mediaMap = listingIds.reduce(
+							(acc, id) => {
+								acc[id] = mediaRows
+									.filter((m) => m.listingId === id)
+									.map(toMediaRow);
+								return acc;
+							},
+							{} as Record<string, ListingMediaRow[]>,
 						);
+
+						const countMap = Object.fromEntries(
+							countRows.map((r) => [r.listingId, Number(r.count)]),
+						);
+
+						const coverMap = Object.fromEntries(
+							coverRows.map((r) => [r.listingId, r.url]),
+						);
+
+						const listingMap = Object.fromEntries(
+							listingRows.map((r) => [r.id, r]),
+						);
+
+						const data: FavoriteListingRow[] = favRows.map((fav) => {
+							const listing = listingMap[fav.listingId]!;
+							return {
+								...toListingRow(
+									{ ...listing, coverImage: coverMap[fav.listingId] ?? null },
+									countMap[fav.listingId] ?? 0,
+								),
+								media: mediaMap[fav.listingId] ?? [],
+								favoritedAt: fav.createdAt.toISOString(),
+							};
+						});
 
 						return {
 							data,

@@ -332,9 +332,25 @@ export class ListingRepository extends Context.Service<
 						const { page, limit } = pagination;
 						const offset = (page - 1) * limit;
 
+						const selectFields = {
+							id: listings.id,
+							landlordId: listings.landlordId,
+							title: listings.title,
+							description: listings.description,
+							price: listings.price,
+							rooms: listings.rooms,
+							furnished: listings.furnished,
+							status: listings.status,
+							address: listings.address,
+							createdAt: listings.createdAt,
+							updatedAt: listings.updatedAt,
+							latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
+							longitude: sql<number>`ST_X(${listings.location}::geometry)`,
+						};
+
 						const [rows, totalRows] = yield* Effect.all([
 							db
-								.select()
+								.select(selectFields) // use selectFields here
 								.from(listings)
 								.where(eq(listings.landlordId, landlordId))
 								.limit(limit)
@@ -346,10 +362,48 @@ export class ListingRepository extends Context.Service<
 								.where(eq(listings.landlordId, landlordId)),
 						]);
 
+						const listingIds = rows.map((r) => r.id);
+
+						// Fetch favorite counts
+						const countRows =
+							listingIds.length > 0
+								? yield* db
+										.select({ listingId: favorites.listingId, count: count() })
+										.from(favorites)
+										.where(inArray(favorites.listingId, listingIds))
+										.groupBy(favorites.listingId)
+								: [];
+
+						const countMap = Object.fromEntries(
+							countRows.map((r) => [r.listingId, Number(r.count)]),
+						);
+
+						// Fetch cover images
+						const coverRows =
+							listingIds.length > 0
+								? yield* db
+										.selectDistinctOn([listingMedia.listingId], {
+											listingId: listingMedia.listingId,
+											url: listingMedia.url,
+										})
+										.from(listingMedia)
+										.where(inArray(listingMedia.listingId, listingIds))
+										.orderBy(listingMedia.listingId, listingMedia.order)
+								: [];
+
+						const coverMap = Object.fromEntries(
+							coverRows.map((r) => [r.listingId, r.url]),
+						);
+
 						const total = Number(totalRows[0]?.count ?? 0);
 
 						return {
-							data: rows.map(toListingRow),
+							data: rows.map((r) =>
+								toListingRow(
+									{ ...r, coverImage: coverMap[r.id] ?? null },
+									countMap[r.id] ?? 0,
+								),
+							),
 							total,
 							page,
 							limit,
