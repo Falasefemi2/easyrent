@@ -26,6 +26,7 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 
 		return handlers
 			.handle("list", ({ query }) => {
+				console.log("query params:", query);
 				return listingsService
 					.getAll(
 						{ page: query.page ?? 1, limit: query.limit ?? 20 },
@@ -39,6 +40,7 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 										: undefined,
 							rooms: query.rooms,
 							minRooms: query.minRooms,
+							search: query.search,
 						},
 					)
 					.pipe(Effect.orDie);

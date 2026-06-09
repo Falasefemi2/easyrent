@@ -229,6 +229,7 @@ export class ListingRepository extends Context.Service<
 						rooms?: number;
 						minPrice?: number;
 						maxPrice?: number;
+						search?: string;
 					},
 				): DbEffect<PaginatedResult<ListingRow>> =>
 					Effect.gen(function* () {
@@ -250,6 +251,12 @@ export class ListingRepository extends Context.Service<
 						}
 						if (filters?.minRooms !== undefined) {
 							conditions.push(sql`${listings.rooms} >= ${filters.minRooms}`);
+						}
+						if (filters?.search) {
+							const searchTerm = `%${filters.search}%`;
+							conditions.push(
+								sql`(${listings.title} ILIKE ${searchTerm} OR ${listings.address} ILIKE ${searchTerm} OR ${listings.description} ILIKE ${searchTerm})`,
+							);
 						}
 
 						const whereClause =

@@ -33,6 +33,7 @@ export class ListingService extends Context.Service<
 				furnished?: boolean;
 				minRooms?: number;
 				rooms?: number;
+				search?: string;
 			},
 		) => Effect.Effect<PaginatedResult<ListingRow>>;
 

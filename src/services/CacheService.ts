@@ -10,10 +10,10 @@ export const CacheKeys = {
 			furnished?: boolean;
 			rooms?: number;
 			minRooms?: number;
+			search?: string;
 		},
 	) =>
-		`listings:page=${page}:limit=${limit}:status=${filters?.status ?? "all"}:furnished=${filters?.furnished ?? "all"}:rooms=${filters?.rooms ?? "all"}:minRooms=${filters?.minRooms ?? "all"}`,
-
+		`listings:page=${page}:limit=${limit}:status=${filters?.status ?? "all"}:furnished=${filters?.furnished ?? "all"}:rooms=${filters?.rooms ?? "all"}:minRooms=${filters?.minRooms ?? "all"}:search=${filters?.search ?? ""}`,
 	listing: (id: string) => `listing:${id}`,
 
 	myListings: (userId: string, page: number, limit: number) =>
