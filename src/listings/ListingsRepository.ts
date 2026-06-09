@@ -126,6 +126,9 @@ export class ListingRepository extends Context.Service<
 			pagination: PaginationParams,
 			filters?: {
 				status?: "avaiable" | "rented" | "inative";
+				furnished?: boolean;
+				minRooms?: number;
+				rooms?: number;
 				minPrice?: number;
 				maxPrice?: number;
 			},
@@ -221,6 +224,9 @@ export class ListingRepository extends Context.Service<
 					pagination: PaginationParams,
 					filters?: {
 						status?: "avaiable" | "rented" | "inative";
+						furnished?: boolean;
+						minRooms?: number;
+						rooms?: number;
 						minPrice?: number;
 						maxPrice?: number;
 					},
@@ -232,6 +238,18 @@ export class ListingRepository extends Context.Service<
 
 						if (filters?.status) {
 							conditions.push(eq(listings.status, filters.status));
+						}
+						if (filters?.status) {
+							conditions.push(eq(listings.status, filters.status));
+						}
+						if (filters?.furnished !== undefined) {
+							conditions.push(eq(listings.furnished, filters.furnished));
+						}
+						if (filters?.rooms !== undefined) {
+							conditions.push(eq(listings.rooms, filters.rooms));
+						}
+						if (filters?.minRooms !== undefined) {
+							conditions.push(sql`${listings.rooms} >= ${filters.minRooms}`);
 						}
 
 						const whereClause =

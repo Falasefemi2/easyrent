@@ -25,19 +25,24 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 		const listingsService = yield* ListingService;
 
 		return handlers
-			.handle("list", ({ query }) =>
-				listingsService
+			.handle("list", ({ query }) => {
+				return listingsService
 					.getAll(
-						{
-							page: query.page ?? 1,
-							limit: query.limit ?? 20,
-						},
+						{ page: query.page ?? 1, limit: query.limit ?? 20 },
 						{
 							status: query.status,
+							furnished:
+								query.furnished === "true"
+									? true
+									: query.furnished === "false"
+										? false
+										: undefined,
+							rooms: query.rooms,
+							minRooms: query.minRooms,
 						},
 					)
-					.pipe(Effect.orDie),
-			)
+					.pipe(Effect.orDie);
+			})
 			.handle("getById", ({ params }) =>
 				listingsService
 					.getById(params.id)

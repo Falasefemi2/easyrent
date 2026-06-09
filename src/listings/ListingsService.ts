@@ -28,7 +28,12 @@ export class ListingService extends Context.Service<
 
 		readonly getAll: (
 			pagination: PaginationParams,
-			filters?: { status?: "avaiable" | "rented" | "inative" },
+			filters?: {
+				status?: "avaiable" | "rented" | "inative";
+				furnished?: boolean;
+				minRooms?: number;
+				rooms?: number;
+			},
 		) => Effect.Effect<PaginatedResult<ListingRow>>;
 
 		readonly getMyListings: (
@@ -80,7 +85,6 @@ export class ListingService extends Context.Service<
 				(params: CreateListingParams): Effect.Effect<ListingRow> =>
 					Effect.gen(function* () {
 						const listing = yield* repo.create(params).pipe(Effect.orDie);
-						// New listing — invalidate all list caches
 						yield* cache.invalidateListings();
 						return listing;
 					}),
@@ -121,17 +125,24 @@ export class ListingService extends Context.Service<
 			const getAll = Effect.fn("ListingService.getAll")(
 				(
 					pagination: PaginationParams,
-					filters?: { status?: "avaiable" | "rented" | "inative" },
+					filters?: {
+						status?: "avaiable" | "rented" | "inative";
+						furnished?: boolean;
+						minRooms?: number;
+						rooms?: number;
+					},
 				): Effect.Effect<PaginatedResult<ListingRow>> =>
 					Effect.gen(function* () {
 						const key = CacheKeys.listings(
 							pagination.page,
 							pagination.limit,
-							filters?.status,
+							filters,
 						);
+
 						const cached =
 							yield* cache.getJson<PaginatedResult<ListingRow>>(key);
 						if (cached) return cached;
+
 						const result = yield* repo
 							.findAll(pagination, filters)
 							.pipe(Effect.orDie);

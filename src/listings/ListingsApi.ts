@@ -81,6 +81,9 @@ export class ListingsApiGroup extends HttpApiGroup.make("listings")
 				status: Schema.optional(
 					Schema.Literals(["avaiable", "rented", "inative"]),
 				),
+				furnished: Schema.optional(Schema.String), // "true" | "false"
+				rooms: Schema.optional(Schema.NumberFromString),
+				minRooms: Schema.optional(Schema.NumberFromString),
 			}),
 			success: PaginatedListingSchema,
 		}),

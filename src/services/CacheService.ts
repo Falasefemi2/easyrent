@@ -2,8 +2,17 @@ import { Context, Effect, Layer } from "effect";
 import { RedisService } from "./RedisService";
 
 export const CacheKeys = {
-	listings: (page: number, limit: number, status?: string) =>
-		`listings:page=${page}:limit=${limit}:status=${status ?? "all"}`,
+	listings: (
+		page: number,
+		limit: number,
+		filters?: {
+			status?: string;
+			furnished?: boolean;
+			rooms?: number;
+			minRooms?: number;
+		},
+	) =>
+		`listings:page=${page}:limit=${limit}:status=${filters?.status ?? "all"}:furnished=${filters?.furnished ?? "all"}:rooms=${filters?.rooms ?? "all"}:minRooms=${filters?.minRooms ?? "all"}`,
 
 	listing: (id: string) => `listing:${id}`,
 
