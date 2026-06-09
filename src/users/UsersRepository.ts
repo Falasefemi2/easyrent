@@ -18,6 +18,9 @@ export class UsersRepository extends Context.Service<
 				id: string;
 				email: string;
 				avatarUrl: string | null;
+				fullname: string;
+				phone: string;
+				createdAt: Date;
 			}>
 		>;
 	}
@@ -46,6 +49,9 @@ export class UsersRepository extends Context.Service<
 						id: string;
 						email: string;
 						avatarUrl: string | null;
+						fullname: string;
+						phone: string;
+						createdAt: Date;
 					}>
 				> =>
 					Effect.gen(function* () {
@@ -54,6 +60,9 @@ export class UsersRepository extends Context.Service<
 								id: users.id,
 								email: users.email,
 								avatarUrl: users.avatarUrl,
+								fullname: users.fullname,
+								phone: users.phone,
+								createdAt: users.createdAt,
 							})
 							.from(users)
 							.where(eq(users.id, userId))
