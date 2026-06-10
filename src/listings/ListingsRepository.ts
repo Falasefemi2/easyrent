@@ -174,8 +174,27 @@ export class ListingRepository extends Context.Service<
 			const findById = Effect.fn("ListRepository.findById")(
 				(id: string): DbEffect<Option.Option<ListingRow>> =>
 					Effect.gen(function* () {
+						const selectFields = {
+							id: listings.id,
+							landlordId: listings.landlordId,
+							title: listings.title,
+							description: listings.description,
+							price: listings.price,
+							rooms: listings.rooms,
+							furnished: listings.furnished,
+							status: listings.status,
+							address: listings.address,
+							createdAt: listings.createdAt,
+							updatedAt: listings.updatedAt,
+							latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
+							longitude: sql<number>`ST_X(${listings.location}::geometry)`,
+						};
 						const [rows, countRows] = yield* Effect.all([
-							db.select().from(listings).where(eq(listings.id, id)).limit(1),
+							db
+								.select(selectFields)
+								.from(listings)
+								.where(eq(listings.id, id))
+								.limit(1),
 							db
 								.select({ count: count() })
 								.from(favorites)
@@ -201,8 +220,23 @@ export class ListingRepository extends Context.Service<
 					>
 				> =>
 					Effect.gen(function* () {
+						const selectFields = {
+							id: listings.id,
+							landlordId: listings.landlordId,
+							title: listings.title,
+							description: listings.description,
+							price: listings.price,
+							rooms: listings.rooms,
+							furnished: listings.furnished,
+							status: listings.status,
+							address: listings.address,
+							createdAt: listings.createdAt,
+							updatedAt: listings.updatedAt,
+							latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
+							longitude: sql<number>`ST_X(${listings.location}::geometry)`,
+						};
 						const rows = yield* db
-							.select()
+							.select(selectFields)
 							.from(listings)
 							.where(eq(listings.id, id))
 							.limit(1);
@@ -475,7 +509,10 @@ export class ListingRepository extends Context.Service<
 						if (params.furnished !== undefined)
 							updateData.furnished = params.furnished;
 						if (params.address) updateData.address = params.address;
-						if (params.latitude && params.longitude) {
+						if (
+							params.latitude !== undefined &&
+							params.longitude !== undefined
+						) {
 							updateData.location = sql`ST_SetSRID(ST_MakePoint(${params.longitude}, ${params.latitude}), 4326)`;
 						}
 
