@@ -8,7 +8,9 @@
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"build": "bun build ./index.ts --outdir ./dist --target bun",
+		"type-check": "tsc --noEmit"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
