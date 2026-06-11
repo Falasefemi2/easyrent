@@ -1,7 +1,7 @@
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
 import { Effect, Context, Option, Layer } from "effect";
 import { PgDatabase } from "../db";
-import { favorites, listingMedia, listings } from "../db/schema";
+import { favorites, listingMedia, listings, users } from "../db/schema";
 import { eq, sql, and, count, desc, inArray } from "drizzle-orm";
 
 type DbEffect<A> = Effect.Effect<A, EffectDrizzleQueryError>;
@@ -34,6 +34,8 @@ export interface ListingRow {
 	latitude: number | null;
 	longitude: number | null;
 	coverImage: string | null;
+	landlordPhone?: string | null;
+	landlordName?: string | null;
 }
 
 export interface ListingMediaRow {
@@ -209,46 +211,64 @@ export class ListingRepository extends Context.Service<
 					}),
 			);
 
-			const findByIdWithMedia = Effect.fn("ListingRepositoy.findByIdWithMedia")(
+			const findByIdWithMedia = Effect.fn(
+				"ListingRepository.findByIdWithMedia",
+			)(
 				(
 					id: string,
 				): DbEffect<
 					Option.Option<
 						ListingRow & {
 							media: ListingMediaRow[];
+							landlordPhone: string | null;
+							landlordName: string | null;
 						}
 					>
 				> =>
 					Effect.gen(function* () {
-						const selectFields = {
-							id: listings.id,
-							landlordId: listings.landlordId,
-							title: listings.title,
-							description: listings.description,
-							price: listings.price,
-							rooms: listings.rooms,
-							furnished: listings.furnished,
-							status: listings.status,
-							address: listings.address,
-							createdAt: listings.createdAt,
-							updatedAt: listings.updatedAt,
-							latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
-							longitude: sql<number>`ST_X(${listings.location}::geometry)`,
-						};
 						const rows = yield* db
-							.select(selectFields)
+							.select({
+								id: listings.id,
+								landlordId: listings.landlordId,
+								title: listings.title,
+								description: listings.description,
+								price: listings.price,
+								rooms: listings.rooms,
+								furnished: listings.furnished,
+								status: listings.status,
+								address: listings.address,
+								createdAt: listings.createdAt,
+								updatedAt: listings.updatedAt,
+								latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
+								longitude: sql<number>`ST_X(${listings.location}::geometry)`,
+								landlordPhone: users.phone,
+								landlordName: users.fullname,
+							})
 							.from(listings)
+							.leftJoin(users, eq(listings.landlordId, users.id))
 							.where(eq(listings.id, id))
 							.limit(1);
+
 						if (!rows[0]) return Option.none();
+
 						const media = yield* db
 							.select()
 							.from(listingMedia)
 							.where(eq(listingMedia.listingId, id))
 							.orderBy(listingMedia.order);
+
+						const countRows = yield* db
+							.select({ count: count() })
+							.from(favorites)
+							.where(eq(favorites.listingId, id));
+
+						const favoriteCount = Number(countRows[0]?.count ?? 0);
+
 						return Option.some({
-							...toListingRow(rows[0]),
+							...toListingRow({ ...rows[0], coverImage: null }, favoriteCount),
 							media: media.map(toMediaRow),
+							landlordPhone: rows[0].landlordPhone ?? null,
+							landlordName: rows[0].landlordName ?? null,
 						});
 					}),
 			);

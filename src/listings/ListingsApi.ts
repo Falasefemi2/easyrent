@@ -38,6 +38,8 @@ const ListingWithMediaSchema = Schema.Struct({
 			createdAt: Schema.String,
 		}),
 	),
+	landlordPhone: Schema.NullOr(Schema.String),
+	landlordName: Schema.NullOr(Schema.String),
 });
 
 const CreateListingPayload = Schema.Struct({
