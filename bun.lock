@@ -5,16 +5,14 @@
     "": {
       "name": "easyrent",
       "dependencies": {
-        "@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@524536e",
-        "@effect/sql-pg": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@524536e",
-        "@effect/vitest": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@524536e",
+        "@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@93cb4f8",
+        "@effect/vitest": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@93cb4f8",
         "argon2": "^0.44.0",
         "cloudinary": "^2.10.0",
         "dotenv": "^17.4.2",
         "drizzle-orm": "1.0.0-beta.20",
-        "effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@524536e",
-        "effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@737e691",
-        "@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@737e691",
+        "effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@93cb4f8",
+        "@effect/sql-pg": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@93cb4f8",
         "ioredis": "^5.11.1",
         "jose": "^6.2.3",
       },
@@ -99,9 +97,9 @@
 
     "@effect/platform-node-shared": ["@effect/platform-node-shared@https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-node-shared@524536e55f3d8262527542b7b6e90112d4ba427f", { "dependencies": { "@types/ws": "^8.18.1", "ws": "^8.20.0" }, "peerDependencies": { "effect": "^4.0.0-beta.76" } }, "sha512-8cPrkMMjtZhMcpmTl79MPjtDY+cwBvanEwgAwPEa3EQXK8ldohtTnETIoSbwUeoPFRk6FDe+PCr4BTh+6Jt5og=="],
 
-    "@effect/sql-pg": ["@effect/sql-pg@https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@524536e", { "dependencies": { "pg": "^8.20.0", "pg-connection-string": "2.12.0", "pg-cursor": "^2.19.0", "pg-pool": "^3.13.0", "pg-types": "^4.1.0" }, "peerDependencies": { "effect": "^4.0.0-beta.76" } }, "sha512-FJ43CFUckKESKeoX0gSTt8AxlbwhHDTNFwV/ZZMsLd0KGG1ZM44gsxv6CxfZqru4JmWSjiLhT1g/eMYZ8oR3Rw=="],
+    "@effect/sql-pg": ["@effect/sql-pg@https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@93cb4f8", { "dependencies": { "pg": "^8.20.0", "pg-connection-string": "2.12.0", "pg-cursor": "^2.19.0", "pg-pool": "^3.13.0", "pg-types": "^4.1.0" }, "peerDependencies": { "effect": "^4.0.0-beta.80" } }, "sha512-H8RXY6M5j8erIGKOOk39NdSUAPO6VbIj9NwvP2YEM+YiRGPg2A49aMDxWXbbqaIPHn84tnloRl84Q9rYvDX9qg=="],
 
-    "@effect/vitest": ["@effect/vitest@https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@524536e", { "peerDependencies": { "effect": "^4.0.0-beta.76", "vitest": "^3.0.0 || ^4.0.0" } }, "sha512-KuPMi2QgE45MSCReg+uGABrlLKCsisHOAhqd47DPlKVKGDtkJntvcRmksULhlE2rhjopQa8HATIuXdFR0Q6JqQ=="],
+    "@effect/vitest": ["@effect/vitest@https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@93cb4f8", { "peerDependencies": { "effect": "^4.0.0-beta.80", "vitest": "^3.0.0 || ^4.0.0" } }, "sha512-3fLkopcYquijDiC0fHe9rFV1LV8N0Dc1Y8oG+lXPLCNOY4eTG091IWTClWxrdklNtDJ3XHAOwwKeXUim7vQpHw=="],
 
     "@emnapi/core": ["@emnapi/core@1.10.0", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.1", "tslib": "^2.4.0" } }, "sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw=="],
 
