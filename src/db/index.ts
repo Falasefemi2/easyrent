@@ -9,6 +9,7 @@ export const PgDatabase = Context.Service<PgDatabase>("auth/PgDatabase");
 
 const PgClientLive = PgClient.layerConfig({
 	url: Config.redacted("DATABASE_URL"),
+	ssl: Config.succeed(true),
 });
 
 const PgDatabaseLive = Layer.effect(
