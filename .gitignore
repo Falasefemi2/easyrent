@@ -32,3 +32,15 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# .gitignore
+node_modules/*
+!node_modules/drizzle-orm/cache/core/cache-effect.js
+!node_modules/drizzle-orm/cache/core/cache-effect.d.ts
+!node_modules/drizzle-orm/effect-core/errors.js
+!node_modules/drizzle-orm/effect-core/errors.d.ts
+!node_modules/drizzle-orm/effect-core/logger.js
+!node_modules/drizzle-orm/effect-core/logger.d.ts
+!node_modules/drizzle-orm/effect-core/query-effect.js
+!node_modules/drizzle-orm/effect-postgres/session.js
+!node_modules/drizzle-orm/pg-core/effect/session.js
