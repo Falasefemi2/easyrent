@@ -2,7 +2,6 @@
 	"name": "easyrent",
 	"module": "index.ts",
 	"scripts": {
-    		"postinstall": "bun run scripts/patch-drizzle.ts",
 		"prepare": "effect-language-service patch",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
@@ -26,7 +25,7 @@
 		"argon2": "^0.44.0",
 		"cloudinary": "^2.10.0",
 		"dotenv": "^17.4.2",
-		"drizzle-orm": "1.0.0-beta.20",
+		"drizzle-orm": "1.0.0-rc.1",
 		"effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@93cb4f8",
 		"ioredis": "^5.11.1",
 		"jose": "^6.2.3"
@@ -38,12 +37,5 @@
 		"@types/pg": "^8.20.0",
 		"drizzle-kit": "1.0.0-beta.20",
 		"pg": "^8.21.0"
-	},
-	"patchedDependencies": {
-		"drizzle-orm@1.0.0-beta.20": "patches/drizzle-orm@1.0.0-beta.20.patch"
-	},
-	"overrides": {
-		"effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@524536e",
-		"@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@524536e"
 	}
 }

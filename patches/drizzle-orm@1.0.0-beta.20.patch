@@ -1,3 +1,6 @@
+diff --git a/node_modules/drizzle-orm/.bun-tag-ecc5e832802b5ac8 b/.bun-tag-ecc5e832802b5ac8
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/cache/core/cache-effect.d.ts b/cache/core/cache-effect.d.ts
 index 9fbd8787855f496063b7a19a80713e548f26e33a..9683827a2cd0c8432fa819e66dfcc7a065e923d5 100644
 --- a/cache/core/cache-effect.d.ts
@@ -102,7 +105,7 @@ index 9fbd8787855f496063b7a19a80713e548f26e33a..9683827a2cd0c8432fa819e66dfcc7a0
    static readonly [entityKind]: string;
  }
 diff --git a/cache/core/cache-effect.js b/cache/core/cache-effect.js
-index 90de9648fe5dee66b5369ecedadb70e2fd09e165..d46320bef484c4d76e49f2fc90879f34185780d1 100644
+index 90de9648fe5dee66b5369ecedadb70e2fd09e165..c20810addd209f24c63a66551e2f3243a5e3ead1 100644
 --- a/cache/core/cache-effect.js
 +++ b/cache/core/cache-effect.js
 @@ -1,65 +1,22 @@
@@ -112,7 +115,7 @@ index 90de9648fe5dee66b5369ecedadb70e2fd09e165..d46320bef484c4d76e49f2fc90879f34
  import * as Effect from "effect/Effect";
  import * as Layer from "effect/Layer";
 +import * as Schema$1 from "effect/Schema";
-+import * as ServiceMap from "effect/ServiceMap";
++import * as Context from "effect/Context";
  
  //#region src/cache/core/cache-effect.ts
 -/**
@@ -138,7 +141,7 @@ index 90de9648fe5dee66b5369ecedadb70e2fd09e165..d46320bef484c4d76e49f2fc90879f34
 -var EffectCache = class EffectCache extends Effect.Service()("drizzle-orm/EffectCache", {
 -	sync: () => make(new NoopCache()),
 -	accessors: true
-+var EffectCache = class EffectCache extends ServiceMap.Service()("drizzle-orm/EffectCache", {
++var EffectCache = class EffectCache extends Context.Service()("drizzle-orm/EffectCache", {
 +	make: Effect.sync(() => make(new NoopCache())),
  }) {
 -	static [entityKind] = this.Service._tag;
@@ -355,14 +358,14 @@ index b3e21ac0fc666591265de983c4017416660604fa..997bdcf91f7560bedfae1681670ca790
  }
  //#endregion
 diff --git a/effect-core/logger.js b/effect-core/logger.js
-index b56cacb7870c087dfb342208fd383c5d95a8b1ae..4f279ba1db22f09f17c7863635a654bdaeea5f94 100644
+index b56cacb7870c087dfb342208fd383c5d95a8b1ae..06e7fe07185c5658f3994b52b8da5e8b709a1638 100644
 --- a/effect-core/logger.js
 +++ b/effect-core/logger.js
 @@ -1,106 +1,48 @@
  import { entityKind } from "../entity.js";
  import * as Effect from "effect/Effect";
  import * as Layer from "effect/Layer";
-+import * as ServiceMap from "effect/ServiceMap";
++import * as Context from "effect/Context";
  
  //#region src/effect-core/logger.ts
 -/**
@@ -398,7 +401,7 @@ index b56cacb7870c087dfb342208fd383c5d95a8b1ae..4f279ba1db22f09f17c7863635a654bd
 -		return { logQuery };
 -	},
 -	accessors: true
-+var EffectLogger = class EffectLogger extends ServiceMap.Service()("drizzle-orm/EffectLogger", {
++var EffectLogger = class EffectLogger extends Context.Service()("drizzle-orm/EffectLogger", {
 +	make: Effect.sync(() => ({
 +		logQuery: (_query, _params) => Effect.void,
 +	})),
@@ -607,7 +610,7 @@ index ba9294f9bc0b7317f04fa322506b057006246c99..8738b4f7771f296d418a56934c4247d5
      type: 'select' | 'update' | 'delete' | 'insert';
      tables: string[];
 diff --git a/effect-postgres/session.js b/effect-postgres/session.js
-index 957735d4a590bf129c7157f967686c3a0f55f8b6..ab1d6f87695d0acc9a973c36b582852f19e4d1ed 100644
+index 957735d4a590bf129c7157f967686c3a0f55f8b6..34e57fc5a5d45c99bd0604355970404e2d1cf274 100644
 --- a/effect-postgres/session.js
 +++ b/effect-postgres/session.js
 @@ -3,7 +3,6 @@ import { mapResultRow } from "../utils.js";
@@ -680,7 +683,7 @@ index 957735d4a590bf129c7157f967686c3a0f55f8b6..ab1d6f87695d0acc9a973c36b582852f
  		}));
  	}
 diff --git a/effect-schema/column.d.ts b/effect-schema/column.d.ts
-index bda22f5b24ebf187851a628b8b0bbe0e9fa7e39d..8f3ea6973938faebadf403813939e8cbe540224a 100644
+index bda22f5b24ebf187851a628b8b0bbe0e9fa7e39d..9d1eaf9514fd0c65c7beaf5e966ca3db42a41a44 100644
 --- a/effect-schema/column.d.ts
 +++ b/effect-schema/column.d.ts
 @@ -1,12 +1,12 @@
@@ -809,7 +812,7 @@ index 01ca919d460a6bdede0007d545a859fd05ea326d..401980f0a280ee331eb296d450c30547
  
  //#endregion
 diff --git a/effect-schema/column.types.d.ts b/effect-schema/column.types.d.ts
-index 800238eeedff57a8514c2f922696475f2cfa103b..1a78ffb9bba3eed8aaa9c2796825674c299b2c1c 100644
+index 800238eeedff57a8514c2f922696475f2cfa103b..3419edd8ae46e002823754021ce4da9bb746a68c 100644
 --- a/effect-schema/column.types.d.ts
 +++ b/effect-schema/column.types.d.ts
 @@ -1,28 +1,28 @@
@@ -934,6 +937,30 @@ index 69305ff1f6a1e43342a50095ff12e65b9daae737..9b50052a77a873b6c7fe69959db40370
  export { BuildRefine, BuildSchema, Conditions, NoUnknownKeys };
  //# sourceMappingURL=schema.types.internal.d.ts.map
 \ No newline at end of file
+diff --git a/package.json b/package.json
+index 286c35e90c88c83490bb78dc3585925531ad0c1e..a664d8a43d55378ed63d3412e80f39b38d18bc21 100644
+--- a/package.json
++++ b/package.json
+@@ -49,8 +49,8 @@
+   "peerDependencies": {
+     "@aws-sdk/client-rds-data": ">=3",
+     "@cloudflare/workers-types": ">=4",
+-    "@effect/sql": "^0.48.5",
+-    "@effect/sql-pg": "^0.49.7",
++    "@effect/sql-pg": ">=4.0.0-beta.42",
++    "effect": ">=4.0.0-beta.42",
+     "@electric-sql/pglite": ">=0.2.0",
+     "@libsql/client": ">=0.10.0",
+     "@libsql/client-wasm": ">=0.10.0",
+@@ -180,7 +180,7 @@
+     "@upstash/redis": {
+       "optional": true
+     },
+-    "@effect/sql": {
++    "effect": {
+       "optional": true
+     },
+     "@effect/sql-pg": {
 diff --git a/pg-core/effect/db.d.ts b/pg-core/effect/db.d.ts
 index a55378398bb346505831296af2597f9d3d20652a..2cfbdbd96497b022dbea35db70f9b841dce1de1b 100644
 --- a/pg-core/effect/db.d.ts
@@ -979,7 +1006,7 @@ index b988d1734f144461f9d664fac72998b6131bdff8..4e147b057a0aa09cda2cd5042a1397bc
  //#region src/pg-core/effect/session.d.ts
  declare abstract class PgEffectPreparedQuery<T extends PreparedQueryConfig, TEffectHKT extends QueryEffectHKTBase = QueryEffectHKTBase> extends PgBasePreparedQuery {
 diff --git a/pg-core/effect/session.js b/pg-core/effect/session.js
-index 4ed608789f5a6a200c50104668622516b1a10e83..abb15c1832c51d8fd600843daf501256cc214a98 100644
+index 4ed608789f5a6a200c50104668622516b1a10e83..59e55c982f1f6de7815c49e0fa7056fb8bd2be7d 100644
 --- a/pg-core/effect/session.js
 +++ b/pg-core/effect/session.js
 @@ -26,7 +26,7 @@ var PgEffectPreparedQuery = class extends PgBasePreparedQuery {
@@ -991,12 +1018,13 @@ index 4ed608789f5a6a200c50104668622516b1a10e83..abb15c1832c51d8fd600843daf501256
  			const { cacheConfig, queryMetadata } = this;
  			const cache = yield* EffectCache;
  			const cacheStrat = cache && !is(cache.cache, NoopCache) ? yield* Effect.tryPromise(() => strategyFor(queryString, params, queryMetadata, cacheConfig)) : { type: "skip" };
-@@ -46,11 +46,11 @@ var PgEffectPreparedQuery = class extends PgBasePreparedQuery {
+@@ -45,12 +45,12 @@ var PgEffectPreparedQuery = class extends PgBasePreparedQuery {
+ 				return result;
  			}
  			assertUnreachable(cacheStrat);
 -		}).pipe(Effect.provideService(EffectCache, this.cache), Effect.catchAll((e) => {
-+		}).pipe(Effect.provideService(EffectCache, this.cache), Effect.catch((e) => {
 -			return new EffectDrizzleQueryError({
++		}).pipe(Effect.provideService(EffectCache, this.cache), Effect.catch((e) => {
 +			return Effect.fail(new EffectDrizzleQueryError({
  				query: queryString,
  				params,
@@ -1006,29 +1034,3 @@ index 4ed608789f5a6a200c50104668622516b1a10e83..abb15c1832c51d8fd600843daf501256
  		}));
  	}
  };
-diff --git a/package.json b/package.json
-index 0000000000000000000000000000000000000000..0000000000000000000000000000000000000001 100644
---- a/package.json
-+++ b/package.json
-@@ -49,8 +49,8 @@
-   "peerDependencies": {
-     "@aws-sdk/client-rds-data": ">=3",
-     "@cloudflare/workers-types": ">=4",
--    "@effect/sql": "^0.48.5",
--    "@effect/sql-pg": "^0.49.7",
-+    "@effect/sql-pg": ">=4.0.0-beta.42",
-+    "effect": ">=4.0.0-beta.42",
-     "@electric-sql/pglite": ">=0.2.0",
-     "@libsql/client": ">=0.10.0",
-     "@libsql/client-wasm": ">=0.10.0",
-@@ -180,9 +180,9 @@
-     "@upstash/redis": {
-       "optional": true
-     },
--    "@effect/sql": {
-+    "effect": {
-       "optional": true
-     },
-     "@effect/sql-pg": {
-       "optional": true
-     },
