@@ -1,13 +1,11 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1.3.13
+
 WORKDIR /app
 
-# Install deps
-COPY package.json bun.lock* bun.lockb* ./
-COPY patches ./patches
-RUN bun install --frozen-lockfile
+COPY package.json bun.lockb ./
+COPY node_modules ./node_modules
+COPY src ./src
+COPY index.ts ./
+COPY .env ./
 
-# Copy rest of the app
-COPY . .
-
-EXPOSE 3000
-CMD ["bun", "run", "start"]
+CMD ["bun", "run", "index.ts"]

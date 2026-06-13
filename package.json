@@ -2,6 +2,7 @@
 	"name": "easyrent",
 	"module": "index.ts",
 	"scripts": {
+    		"postinstall": "bun run scripts/patch-drizzle.ts",
 		"prepare": "effect-language-service patch",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
