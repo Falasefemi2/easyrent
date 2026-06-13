@@ -2,9 +2,12 @@ FROM oven/bun:1.3.13
 
 WORKDIR /app
 
-COPY package.json bun.lockb ./
-COPY node_modules ./node_modules
-COPY src ./src
-COPY index.ts ./
+COPY package.json ./
+
+RUN bun install
+
+COPY . .
+
+EXPOSE 3000
 
 CMD ["bun", "run", "index.ts"]
