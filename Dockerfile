@@ -6,6 +6,5 @@ COPY package.json bun.lockb ./
 COPY node_modules ./node_modules
 COPY src ./src
 COPY index.ts ./
-COPY .env ./
 
 CMD ["bun", "run", "index.ts"]
