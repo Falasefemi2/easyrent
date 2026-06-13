@@ -5,6 +5,7 @@ WORKDIR /app
 COPY package.json ./
 COPY bun.lock ./
 COPY patches ./patches
+COPY scripts ./scripts
 
 RUN bun install
 
