@@ -54,7 +54,10 @@ const AllRoutes = Layer.mergeAll(ApiRoutes, DocsRoute);
 
 const HttpServerLayer = HttpRouter.serve(AllRoutes, {
 	middleware: HttpMiddleware.cors({
-		allowedOrigins: ["http://localhost:3001"],
+		allowedOrigins: [
+			"http://localhost:3001",
+			"https://easyrent-fe-eight.vercel.app",
+		],
 		allowedMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 		allowedHeaders: [
 			"Content-Type",
