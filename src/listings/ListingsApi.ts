@@ -94,7 +94,7 @@ export class ListingsApiGroup extends HttpApiGroup.make("listings")
 				search: Schema.optional(Schema.String),
 			}),
 			success: PaginatedListingSchema,
-			error: [RateLimitExceeded],
+			error: [RateLimitExceeded.pipe(HttpApiSchema.status(429))],
 		}),
 	)
 	.add(
@@ -113,7 +113,7 @@ export class ListingsApiGroup extends HttpApiGroup.make("listings")
 		HttpApiEndpoint.post("create", "/listings", {
 			payload: CreateListingPayload,
 			success: ListingSchema,
-			error: [RateLimitExceeded],
+			error: [RateLimitExceeded.pipe(HttpApiSchema.status(429))],
 		}).middleware(Authorization),
 	)
 	.add(
