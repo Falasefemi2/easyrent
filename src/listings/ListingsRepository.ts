@@ -123,7 +123,15 @@ export class ListingRepository extends Context.Service<
 		readonly findById: (id: string) => DbEffect<Option.Option<ListingRow>>;
 		readonly findByIdWithMedia: (
 			id: string,
-		) => DbEffect<Option.Option<ListingRow & { media: ListingMediaRow[] }>>;
+		) => DbEffect<
+			Option.Option<
+				ListingRow & {
+					media: ListingMediaRow[];
+					landlordPhone: string | null;
+					landlordName: string | null;
+				}
+			>
+		>;
 		readonly findAll: (
 			pagination: PaginationParams,
 			filters?: {

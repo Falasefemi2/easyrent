@@ -18,6 +18,11 @@ export class RedisService extends Context.Service<
 		) => Effect.Effect<void, RedisError>;
 		readonly del: (...keys: string[]) => Effect.Effect<void, RedisError>;
 		readonly delPattern: (pattern: string) => Effect.Effect<void, RedisError>;
+		readonly incr: (key: string) => Effect.Effect<number, RedisError>;
+		readonly expire: (
+			key: string,
+			seconds: number,
+		) => Effect.Effect<void, RedisError>;
 	}
 >()("easyrent/services/RedisService") {
 	static readonly layer = Layer.effect(
@@ -79,7 +84,25 @@ export class RedisService extends Context.Service<
 						}
 					}),
 			);
-			return { get, set, del, delPattern };
+
+			const incr = Effect.fn("RedisService.incr")(
+				(key: string): Effect.Effect<number, RedisError> =>
+					Effect.tryPromise({
+						try: () => client.incr(key),
+						catch: (e) =>
+							new RedisError({ message: `Redis INCR failed: ${e}` }),
+					}),
+			);
+
+			const expire = Effect.fn("RedisService.expire")(
+				(key: string, seconds: number): Effect.Effect<void, RedisError> =>
+					Effect.tryPromise({
+						try: () => client.expire(key, seconds).then(() => void 0),
+						catch: (e) =>
+							new RedisError({ message: `Redis EXPIRE failed: ${e}` }),
+					}),
+			);
+			return { get, set, del, delPattern, incr, expire };
 		}),
 	);
 }

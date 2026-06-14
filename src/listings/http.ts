@@ -17,42 +17,66 @@ import {
 import { ListingRepository } from "./ListingsRepository";
 import { CacheService } from "../services/CacheService";
 import { RedisService } from "../services/RedisService.ts";
+import { RateLimiter } from "../services/RateLimiter";
 
 export const ListingsApiHandlers = HttpApiBuilder.group(
 	Api,
 	"listings",
 	Effect.fn(function* (handlers) {
 		const listingsService = yield* ListingService;
+		const rateLimiters = yield* RateLimiter;
 
 		return handlers
-			.handle("list", ({ query }) => {
-				console.log("query params:", query);
-				return listingsService
-					.getAll(
-						{ page: query.page ?? 1, limit: query.limit ?? 20 },
-						{
-							status: query.status,
-							furnished:
-								query.furnished === "true"
-									? true
-									: query.furnished === "false"
-										? false
-										: undefined,
-							rooms: query.rooms,
-							minRooms: query.minRooms,
-							search: query.search,
-						},
-					)
-					.pipe(Effect.orDie);
-			})
+			.handle("list", ({ query }) =>
+				Effect.gen(function* () {
+					yield* rateLimiters.checkRequest({
+						prefix: "listings-list",
+						limit: 30,
+						windowSeconds: 60,
+					});
+
+					return yield* listingsService
+						.getAll(
+							{ page: query.page ?? 1, limit: query.limit ?? 20 },
+							{
+								status: query.status,
+								furnished:
+									query.furnished === "true"
+										? true
+										: query.furnished === "false"
+											? false
+											: undefined,
+								rooms: query.rooms,
+								minRooms: query.minRooms,
+								search: query.search,
+							},
+						)
+						.pipe(Effect.orDie);
+				}),
+			)
 			.handle("getById", ({ params }) =>
-				listingsService
-					.getById(params.id)
-					.pipe(Effect.catchTag("ListingNotFound", Effect.die)),
+				Effect.gen(function* () {
+					yield* rateLimiters.checkRequest({
+						prefix: "listings-getById",
+						limit: 60,
+						windowSeconds: 60,
+					});
+
+					return yield* listingsService
+						.getById(params.id)
+						.pipe(Effect.catchTag("ListingNotFound", Effect.die));
+				}),
 			)
 			.handle("create", ({ payload }) =>
 				Effect.gen(function* () {
 					const user = yield* CurrentUser;
+
+					yield* rateLimiters.check({
+						key: `ratelimit:listings-create:${user.userId}`,
+						limit: 10,
+						windowSeconds: 3600,
+					});
+
 					return yield* listingsService
 						.create({
 							...payload,
@@ -145,4 +169,5 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 	Layer.provide(BunServices.layer),
 	Layer.provide(Layer.provide(CacheService.layer, RedisService.layer)),
 	Layer.provide(RedisService.layer),
+	Layer.provide(RateLimiter.layer),
 );

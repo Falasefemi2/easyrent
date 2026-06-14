@@ -19,10 +19,12 @@ export class ListingService extends Context.Service<
 	{
 		readonly create: (params: CreateListingParams) => Effect.Effect<ListingRow>;
 
-		readonly getById: (
-			id: string,
-		) => Effect.Effect<
-			ListingRow & { media: ListingMediaRow[] },
+		readonly getById: (id: string) => Effect.Effect<
+			ListingRow & {
+				media: ListingMediaRow[];
+				landlordPhone: string | null;
+				landlordName: string | null;
+			},
 			ListingNotFound
 		>;
 
@@ -95,14 +97,22 @@ export class ListingService extends Context.Service<
 				(
 					id: string,
 				): Effect.Effect<
-					ListingRow & { media: ListingMediaRow[] },
+					ListingRow & {
+						media: ListingMediaRow[];
+						landlordPhone: string | null;
+						landlordName: string | null;
+					},
 					ListingNotFound
 				> =>
 					Effect.gen(function* () {
 						const key = CacheKeys.listing(id);
 
 						const cached = yield* cache.getJson<
-							ListingRow & { media: ListingMediaRow[] }
+							ListingRow & {
+								media: ListingMediaRow[];
+								landlordPhone: string | null;
+								landlordName: string | null;
+							}
 						>(key);
 						if (cached) return cached;
 

@@ -1,5 +1,9 @@
 import { Schema } from "effect";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import {
+	HttpApiEndpoint,
+	HttpApiGroup,
+	HttpApiSchema,
+} from "effect/unstable/httpapi";
 import {
 	ListingForbidden,
 	ListingMediaError,
@@ -7,6 +11,7 @@ import {
 } from "./ListingsError";
 import { Authorization } from "../auth/Authorization";
 import { ImageUploadError } from "../services/UploadThingService";
+import { RateLimitExceeded } from "../services/RateLimiter";
 
 const ListingSchema = Schema.Struct({
 	id: Schema.String,
@@ -89,12 +94,16 @@ export class ListingsApiGroup extends HttpApiGroup.make("listings")
 				search: Schema.optional(Schema.String),
 			}),
 			success: PaginatedListingSchema,
+			error: [RateLimitExceeded],
 		}),
 	)
 	.add(
 		HttpApiEndpoint.get("getById", "/listings/:id", {
 			success: ListingWithMediaSchema,
-			error: [ListingNotFound],
+			error: [
+				ListingNotFound,
+				RateLimitExceeded.pipe(HttpApiSchema.status(429)),
+			],
 			params: Schema.Struct({
 				id: Schema.String,
 			}),
@@ -104,6 +113,7 @@ export class ListingsApiGroup extends HttpApiGroup.make("listings")
 		HttpApiEndpoint.post("create", "/listings", {
 			payload: CreateListingPayload,
 			success: ListingSchema,
+			error: [RateLimitExceeded],
 		}).middleware(Authorization),
 	)
 	.add(

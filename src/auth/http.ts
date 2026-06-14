@@ -7,21 +7,45 @@ import { PasswordService } from "./PasswordService";
 import { TokenService } from "./TokenService";
 import { AuthConfig } from "./AuthConfig";
 import { DatabaseLive } from "../db";
+import { RateLimiter } from "../services/RateLimiter";
+import { RedisService } from "../services/RedisService.ts";
 
 export const AuthApiHandlers = HttpApiBuilder.group(
 	Api,
 	"auth",
 	Effect.fn(function* (handlers) {
 		const auth = yield* AuthService;
+		const rateLimiters = yield* RateLimiter;
 		return handlers
 			.handle("signUp", ({ payload }) =>
-				auth.signUp(payload).pipe(Effect.orDie),
+				Effect.gen(function* () {
+					yield* rateLimiters.checkRequest({
+						prefix: "sign-up",
+						limit: 5,
+						windowSeconds: 3600,
+					});
+					return yield* auth.signUp(payload).pipe(Effect.orDie);
+				}),
 			)
 			.handle("signIn", ({ payload }) =>
-				auth.signIn(payload).pipe(Effect.orDie),
+				Effect.gen(function* () {
+					yield* rateLimiters.checkRequest({
+						prefix: "sign-in",
+						limit: 10,
+						windowSeconds: 900,
+					});
+					return yield* auth.signIn(payload).pipe(Effect.orDie);
+				}),
 			)
 			.handle("refresh", ({ payload }) =>
-				auth.refresh(payload.refreshToken).pipe(Effect.orDie),
+				Effect.gen(function* () {
+					yield* rateLimiters.checkRequest({
+						prefix: "refresh",
+						limit: 30,
+						windowSeconds: 3600,
+					});
+					return yield* auth.refresh(payload.refreshToken).pipe(Effect.orDie);
+				}),
 			)
 			.handle("signOut", ({ payload }) =>
 				auth.signOut(payload.refreshToken).pipe(Effect.orDie),
@@ -29,6 +53,8 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 	}),
 ).pipe(
 	Layer.provide(AuthService.layer),
+	Layer.provide(RateLimiter.layer),
+	Layer.provide(RedisService.layer),
 	Layer.provide(AuthRepository.layer),
 	Layer.provide(PasswordService.layer),
 	Layer.provide(TokenService.layer),

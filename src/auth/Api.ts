@@ -3,6 +3,7 @@ import {
 	HttpApi,
 	HttpApiEndpoint,
 	HttpApiGroup,
+	HttpApiSchema,
 	OpenApi,
 } from "effect/unstable/httpapi";
 import {
@@ -14,12 +15,11 @@ import {
 import { UsersApiGroup } from "../users/UsersApi";
 import { ListingsApiGroup } from "../listings/ListingsApi";
 import { FavoritesApiGroup } from "../favorites/FavoritesApi";
-
+import { RateLimitExceeded } from "../services/RateLimiter";
 const AuthTokenSchema = Schema.Struct({
 	accessToken: Schema.String,
 	refreshToken: Schema.String,
 });
-
 export class AuthApiGroup extends HttpApiGroup.make("auth")
 	.add(
 		HttpApiEndpoint.post("signUp", "/auth/sign-up", {
@@ -28,7 +28,6 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 					Schema.check(Schema.isPattern(/^\S+@\S+\.\S+$/)),
 				),
 				password: Schema.String.pipe(Schema.check(Schema.isMinLength(8))),
-
 				phone: Schema.String.pipe(
 					Schema.check(Schema.isPattern(/^\+?[0-9]\d{7,14}$/)),
 				),
@@ -38,7 +37,10 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				),
 			}),
 			success: AuthTokenSchema,
-			error: [EmailAlreadyTaken],
+			error: Schema.Union([
+				EmailAlreadyTaken.pipe(HttpApiSchema.status(409)),
+				RateLimitExceeded.pipe(HttpApiSchema.status(429)),
+			]),
 		}),
 	)
 	.add(
@@ -50,7 +52,10 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				password: Schema.String.pipe(Schema.check(Schema.isMinLength(8))),
 			}),
 			success: AuthTokenSchema,
-			error: [InvalidCredentials],
+			error: Schema.Union([
+				InvalidCredentials.pipe(HttpApiSchema.status(401)),
+				RateLimitExceeded.pipe(HttpApiSchema.status(429)),
+			]),
 		}),
 	)
 	.add(
@@ -59,7 +64,11 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				refreshToken: Schema.String,
 			}),
 			success: AuthTokenSchema,
-			error: [InvalidToken, TokenExpired],
+			error: Schema.Union([
+				InvalidToken.pipe(HttpApiSchema.status(401)),
+				TokenExpired.pipe(HttpApiSchema.status(401)),
+				RateLimitExceeded.pipe(HttpApiSchema.status(429)),
+			]),
 		}),
 	)
 	.add(
@@ -68,9 +77,9 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				refreshToken: Schema.String,
 			}),
 			success: Schema.Void,
+			error: RateLimitExceeded.pipe(HttpApiSchema.status(429)),
 		}),
 	) {}
-
 export class Api extends HttpApi.make("api")
 	.add(AuthApiGroup)
 	.add(UsersApiGroup)
