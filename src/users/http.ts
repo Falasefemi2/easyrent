@@ -13,6 +13,8 @@ import {
 	ImageUploadService,
 } from "../services/UploadThingService";
 import { BunServices } from "@effect/platform-bun";
+import { CacheService, CacheKeys, CACHE_TTL } from "../services/CacheService";
+import { RedisService } from "../services/RedisService";
 
 export const UsersApiHandlers = HttpApiBuilder.group(
 	Api,
@@ -25,6 +27,7 @@ export const UsersApiHandlers = HttpApiBuilder.group(
 					const imageUpload = yield* ImageUploadService;
 					const usersRepo = yield* UsersRepository;
 					const req = yield* HttpServerRequest.HttpServerRequest;
+					const cache = yield* CacheService;
 
 					const persisted = yield* req.multipart.pipe(
 						Effect.mapError(
@@ -48,6 +51,8 @@ export const UsersApiHandlers = HttpApiBuilder.group(
 						.updateAvatar(user.userId, avatarUrl)
 						.pipe(Effect.orDie);
 
+					yield* cache.invalidate(CacheKeys.user(user.userId));
+
 					return { avatarUrl };
 				}),
 			)
@@ -55,12 +60,30 @@ export const UsersApiHandlers = HttpApiBuilder.group(
 				Effect.gen(function* () {
 					const user = yield* CurrentUser;
 					const usersRepo = yield* UsersRepository;
+					const cache = yield* CacheService;
+
+					const key = CacheKeys.user(user.userId);
+					const cached = yield* cache.getJson<{
+						id: string;
+						email: string;
+						fullname: string;
+						phone: string;
+						avatarUrl: string | null;
+						createdAt: Date;
+					}>(key);
+
+					if (cached) {
+						return {
+							...cached,
+							createdAt: new Date(cached.createdAt),
+						};
+					}
 
 					const maybeUser = yield* usersRepo
 						.findById(user.userId)
 						.pipe(Effect.orDie);
 
-					return yield* Option.match(maybeUser, {
+					const result = yield* Option.match(maybeUser, {
 						onNone: () => Effect.die("User not found"),
 						onSome: (u) =>
 							Effect.succeed({
@@ -72,6 +95,9 @@ export const UsersApiHandlers = HttpApiBuilder.group(
 								createdAt: u.createdAt,
 							}),
 					});
+
+					yield* cache.setJson(key, result, CACHE_TTL.user);
+					return result;
 				}),
 			);
 	}),
@@ -79,6 +105,8 @@ export const UsersApiHandlers = HttpApiBuilder.group(
 	Layer.provide(AuthorizationLayer),
 	Layer.provide(ImageUploadService.layer),
 	Layer.provide(UsersRepository.layer),
+	Layer.provide(CacheService.layer),
+	Layer.provide(RedisService.layer),
 	Layer.provide(TokenService.layer),
 	Layer.provide(AuthConfig.layer),
 	Layer.provide(DatabaseLive),

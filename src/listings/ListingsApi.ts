@@ -162,4 +162,14 @@ export class ListingsApiGroup extends HttpApiGroup.make("listings")
 			query: PaginationSchema,
 			success: PaginatedListingSchema,
 		}).middleware(Authorization),
+	)
+	.add(
+		HttpApiEndpoint.patch("updateStatus", "/listings/:id/status", {
+			params: Schema.Struct({ id: Schema.String }),
+			payload: Schema.Struct({
+				status: Schema.Literals(["avaiable", "rented", "inative"]),
+			}),
+			success: ListingSchema,
+			error: [ListingNotFound, ListingForbidden],
+		}).middleware(Authorization),
 	) {}

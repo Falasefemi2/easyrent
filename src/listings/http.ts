@@ -156,6 +156,16 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 						})
 						.pipe(Effect.orDie);
 				}),
+			)
+			.handle("updateStatus", ({ params, payload }) =>
+				Effect.gen(function* () {
+					const user = yield* CurrentUser;
+					return yield* listingsService.updateStatus(
+						params.id,
+						user.userId,
+						payload.status,
+					);
+				}),
 			);
 	}),
 ).pipe(

@@ -18,12 +18,14 @@ export const CacheKeys = {
 
 	myListings: (userId: string, page: number, limit: number) =>
 		`listings:user=${userId}:page=${page}:limit=${limit}`,
+	user: (userId: string) => `user:${userId}`,
 } as const;
 
 export const CACHE_TTL = {
 	listings: 300, // 5 mins
 	listing: 600, // 10 minutes
 	myListings: 120, // 2 mins ->user's own listings more gynamic
+	user: 60, // 60 seconds
 };
 
 export class CacheService extends Context.Service<

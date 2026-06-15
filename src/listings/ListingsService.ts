@@ -66,6 +66,11 @@ export class ListingService extends Context.Service<
 			id: string,
 			landlordId: string,
 		) => Effect.Effect<void, ListingNotFound | ListingForbidden>;
+		readonly updateStatus: (
+			id: string,
+			landlordId: string,
+			status: "avaiable" | "rented" | "inative",
+		) => Effect.Effect<ListingRow, ListingNotFound | ListingForbidden>;
 	}
 >()("easyrent/listings/ListingsService/ListingService") {
 	static readonly layer = Layer.effect(
@@ -272,6 +277,38 @@ export class ListingService extends Context.Service<
 						yield* cache.invalidateListing(id);
 					}),
 			);
+			const updateStatus = Effect.fn("ListingService.updateStatus")(
+				(
+					id: string,
+					landlordId: string,
+					status: "avaiable" | "rented" | "inative",
+				): Effect.Effect<ListingRow, ListingNotFound | ListingForbidden> =>
+					Effect.gen(function* () {
+						const maybeListing = yield* repo.findById(id).pipe(Effect.orDie);
+						const listing = yield* Option.match(maybeListing, {
+							onNone: () =>
+								Effect.fail(
+									new ListingNotFound({ message: `Listing ${id} not found` }),
+								),
+							onSome: Effect.succeed,
+						});
+
+						yield* assertOwner(listing, landlordId);
+
+						const updated = yield* repo
+							.update(id, { status } as any)
+							.pipe(Effect.orDie);
+						yield* cache.invalidateListing(id);
+
+						return yield* Option.match(updated, {
+							onNone: () =>
+								Effect.fail(
+									new ListingNotFound({ message: `Listing ${id} not found` }),
+								),
+							onSome: Effect.succeed,
+						});
+					}),
+			);
 
 			return {
 				create,
@@ -280,6 +317,7 @@ export class ListingService extends Context.Service<
 				getMyListings,
 				uploadMedia,
 				update,
+				updateStatus,
 				delete: deleteListing,
 			};
 		}),

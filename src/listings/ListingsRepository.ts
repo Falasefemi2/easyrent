@@ -121,9 +121,7 @@ export class ListingRepository extends Context.Service<
 	{
 		readonly create: (params: CreateListingParams) => DbEffect<ListingRow>;
 		readonly findById: (id: string) => DbEffect<Option.Option<ListingRow>>;
-		readonly findByIdWithMedia: (
-			id: string,
-		) => DbEffect<
+		readonly findByIdWithMedia: (id: string) => DbEffect<
 			Option.Option<
 				ListingRow & {
 					media: ListingMediaRow[];
@@ -151,7 +149,11 @@ export class ListingRepository extends Context.Service<
 		readonly deleteMedia: (mediaId: string) => DbEffect<void>;
 		readonly update: (
 			id: string,
-			params: Partial<Omit<CreateListingParams, "landlordId">>,
+			params: Partial<
+				Omit<CreateListingParams, "landlordId"> & {
+					status?: "avaiable" | "rented" | "inative";
+				}
+			>,
 		) => DbEffect<Option.Option<ListingRow>>;
 		readonly delete: (id: string) => DbEffect<void>;
 	}
@@ -523,7 +525,11 @@ export class ListingRepository extends Context.Service<
 			const update = Effect.fn("ListingsRepository.update")(
 				(
 					id: string,
-					params: Partial<Omit<CreateListingParams, "landlordId">>,
+					params: Partial<
+						Omit<CreateListingParams, "landlordId"> & {
+							status?: "avaiable" | "rented" | "inative";
+						}
+					>,
 				): DbEffect<Option.Option<ListingRow>> =>
 					Effect.gen(function* () {
 						const updateData: Record<string, unknown> = {
@@ -531,6 +537,7 @@ export class ListingRepository extends Context.Service<
 						};
 
 						if (params.title) updateData.title = params.title;
+						if (params.status) updateData.status = params.status;
 						if (params.description) updateData.description = params.description;
 						if (params.price) updateData.price = params.price;
 						if (params.rooms !== undefined) updateData.rooms = params.rooms;
