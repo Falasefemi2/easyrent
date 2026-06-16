@@ -61,7 +61,6 @@ const HttpServerLayer = HttpRouter.serve(AllRoutes, {
 		allowedOrigins: [
 			"http://localhost:3001",
 			"https://easyrent-fe-eight.vercel.app",
-			"*",
 		],
 		allowedMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 		allowedHeaders: [
