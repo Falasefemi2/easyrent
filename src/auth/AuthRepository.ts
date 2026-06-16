@@ -18,6 +18,9 @@ export interface UserRow {
 	passwordHash: string;
 	fullname: string;
 	avatarUrl: string | null;
+	emailVerified: boolean;
+	verificationToken: string | null;
+	verificationTokenExpiresAt: Date | null;
 }
 
 export interface RefreshTokenRow {
@@ -45,6 +48,19 @@ export class AuthRepository extends Context.Service<
 		) => DbEffect<Option.Option<RefreshTokenRow>>;
 		readonly revokeRefreshToken: (id: string) => DbEffect<void>;
 		readonly revokeAllUserTokens: (userId: string) => DbEffect<void>;
+		readonly storeVerificationToken: (params: {
+			userId: string;
+			token: string;
+			expiresAt: Date;
+		}) => Effect.Effect<void, EffectDrizzleQueryError>;
+
+		readonly findByVerificationToken: (
+			token: string,
+		) => Effect.Effect<Option.Option<UserRow>, EffectDrizzleQueryError>;
+
+		readonly markEmailVerified: (
+			userId: string,
+		) => Effect.Effect<void, EffectDrizzleQueryError>;
 	}
 >()("easyrent/auth/AuthRepository") {
 	static readonly layer = Layer.effect(
@@ -144,6 +160,53 @@ export class AuthRepository extends Context.Service<
 						),
 			);
 
+			const storeVerificationToken = Effect.fn(
+				"AuthRepository.storeVerificationToken",
+			)(
+				(params: {
+					userId: string;
+					token: string;
+					expiresAt: Date;
+				}): DbEffect<void> =>
+					Effect.gen(function* () {
+						yield* db
+							.update(users)
+							.set({
+								verificationToken: params.token,
+								verificationTokenExpiresAt: params.expiresAt,
+							})
+							.where(eq(users.id, params.userId));
+					}),
+			);
+
+			const findByVerificationToken = Effect.fn(
+				"AuthRepository.findByVerificationToken",
+			)(
+				(token: string): DbEffect<Option.Option<UserRow>> =>
+					Effect.gen(function* () {
+						const rows = yield* db
+							.select()
+							.from(users)
+							.where(eq(users.verificationToken, token))
+							.limit(1);
+						return Option.fromNullOr(rows[0] ?? null);
+					}),
+			);
+
+			const markEmailVerified = Effect.fn("AuthRepository.markEmailVerified")(
+				(userId: string): DbEffect<void> =>
+					Effect.gen(function* () {
+						yield* db
+							.update(users)
+							.set({
+								emailVerified: true,
+								verificationToken: null,
+								verificationTokenExpiresAt: null,
+							})
+							.where(eq(users.id, userId));
+					}),
+			);
+
 			return {
 				findByEmail,
 				findById,
@@ -152,6 +215,9 @@ export class AuthRepository extends Context.Service<
 				findRefreshToken,
 				revokeRefreshToken,
 				revokeAllUserTokens,
+				storeVerificationToken,
+				findByVerificationToken,
+				markEmailVerified,
 			};
 		}),
 	);

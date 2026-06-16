@@ -6,10 +6,15 @@ import { AuthConfig } from "./AuthConfig";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
 import {
 	EmailAlreadyTaken,
+	EmailNotVerified,
 	InvalidCredentials,
 	InvalidToken,
+	InvalidVerificationToken,
 	TokenExpired,
+	TokenExpiredError,
 } from "./AuthError";
+import { EmailService } from "../services/EmailService";
+import { loadConfig } from "../lib/config";
 
 export interface AuthTokens {
 	accessToken: string;
@@ -17,7 +22,11 @@ export interface AuthTokens {
 }
 
 type SignUpError = EmailAlreadyTaken | HashError | EffectDrizzleQueryError;
-type SignInError = InvalidCredentials | HashError | EffectDrizzleQueryError;
+type SignInError =
+	| InvalidCredentials
+	| HashError
+	| EffectDrizzleQueryError
+	| EmailNotVerified;
 type RefreshError = InvalidToken | TokenExpired | EffectDrizzleQueryError;
 type SignOutError = EffectDrizzleQueryError;
 
@@ -43,6 +52,9 @@ export class AuthService extends Context.Service<
 		readonly signOut: (
 			rawRefreshToken: string,
 		) => Effect.Effect<void, SignOutError>;
+		readonly verifyEmail: (
+			token: string,
+		) => Effect.Effect<void, InvalidVerificationToken | TokenExpiredError>;
 	}
 >()("easyrent/auth/AuthService") {
 	static readonly layer = Layer.effect(
@@ -52,6 +64,8 @@ export class AuthService extends Context.Service<
 			const passwords = yield* PasswordService;
 			const tokens = yield* TokenService;
 			const config = yield* AuthConfig;
+			const email = yield* EmailService;
+			const c = yield* loadConfig;
 
 			const issueTokens = Effect.fn("AuthService.issueTokens")(
 				(userId: string, email: string) =>
@@ -106,7 +120,38 @@ export class AuthService extends Context.Service<
 							fullname: params.fullname,
 						});
 
-						return yield* issueTokens(user.id, user.email);
+						const token = Buffer.from(
+							crypto.getRandomValues(new Uint8Array(32)),
+						).toString("hex");
+						const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+						yield* repo.storeVerificationToken({
+							userId: user.id,
+							token,
+							expiresAt,
+						});
+
+						yield* email
+							.sendVerificationEmail({
+								to: user.email,
+								fullname: user.fullname,
+								token,
+							})
+							.pipe(
+								Effect.catch((e) =>
+									Effect.logWarning(
+										`Failed to send verification email: ${JSON.stringify(e)}`,
+									),
+								),
+							);
+						yield* Effect.logInfo(
+							`Config: FROM=${c.FROM_EMAIL}, KEY=${c.RESEND_API_KEY?.slice(0, 8)}...`,
+						);
+
+						return yield* issueTokens(user.id, user.email) as Effect.Effect<
+							AuthTokens,
+							never
+						>;
 					}),
 			);
 
@@ -136,6 +181,12 @@ export class AuthService extends Context.Service<
 						if (!valid) {
 							return yield* new InvalidCredentials({
 								message: "Invalid email or password",
+							});
+						}
+
+						if (!user.emailVerified) {
+							return yield* new EmailNotVerified({
+								message: "Please verify your email before signing in",
 							});
 						}
 
@@ -203,7 +254,39 @@ export class AuthService extends Context.Service<
 					}),
 			);
 
-			return { signUp, signIn, refresh, signOut };
+			const verifyEmail = Effect.fn("AuthService.verifyEmail")(
+				(
+					token: string,
+				): Effect.Effect<void, InvalidVerificationToken | TokenExpiredError> =>
+					Effect.gen(function* () {
+						const maybeUser = yield* repo
+							.findByVerificationToken(token)
+							.pipe(Effect.orDie);
+
+						const user = yield* Option.match(maybeUser, {
+							onNone: () =>
+								Effect.fail(
+									new InvalidVerificationToken({
+										message: "Invalid verification token",
+									}),
+								),
+							onSome: Effect.succeed,
+						});
+
+						if (
+							!user.verificationTokenExpiresAt ||
+							user.verificationTokenExpiresAt < new Date()
+						) {
+							return yield* new TokenExpiredError({
+								message: "Verification token has expired",
+							});
+						}
+
+						yield* repo.markEmailVerified(user.id).pipe(Effect.orDie);
+					}),
+			);
+
+			return { signUp, signIn, refresh, signOut, verifyEmail };
 		}),
 	);
 }

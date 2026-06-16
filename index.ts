@@ -14,6 +14,7 @@ import { TokenService } from "./src/auth/TokenService";
 import { ImageUploadService } from "./src/services/UploadThingService";
 import { RedisService } from "./src/services/RedisService.ts";
 import { CacheService } from "./src/services/CacheService.ts";
+import { EmailService } from "./src/services/EmailService.ts";
 import { FavoritesApiHandlers } from "./src/favorites/http.ts";
 
 // Base infrastructure layer — everything that other layers depend on
@@ -23,10 +24,13 @@ const RedisLive = RedisService.layer.pipe(Layer.provide(InfraLive));
 
 const CacheLive = CacheService.layer.pipe(Layer.provide(RedisLive));
 
+const EmailLive = EmailService.layer.pipe(Layer.provide(InfraLive));
+
 // Service layers that depend on infra
 const ServicesLive = Layer.mergeAll(
 	TokenService.layer,
 	ImageUploadService.layer,
+	EmailLive,
 ).pipe(Layer.provide(InfraLive));
 
 // Repository layers that depend on DB
@@ -57,6 +61,7 @@ const HttpServerLayer = HttpRouter.serve(AllRoutes, {
 		allowedOrigins: [
 			"http://localhost:3001",
 			"https://easyrent-fe-eight.vercel.app",
+			"*",
 		],
 		allowedMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 		allowedHeaders: [

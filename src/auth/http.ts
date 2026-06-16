@@ -47,6 +47,7 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 					return yield* auth.refresh(payload.refreshToken).pipe(Effect.orDie);
 				}),
 			)
+			.handle("verifyEmail", ({ payload }) => auth.verifyEmail(payload.token))
 			.handle("signOut", ({ payload }) =>
 				auth.signOut(payload.refreshToken).pipe(Effect.orDie),
 			);

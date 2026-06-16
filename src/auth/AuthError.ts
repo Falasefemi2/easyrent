@@ -19,3 +19,21 @@ export class TokenExpired extends Schema.TaggedErrorClass<TokenExpired>()(
 	"TokenExpired",
 	{ message: Schema.String },
 ) {}
+
+export class EmailNotVerified extends Schema.TaggedErrorClass<EmailNotVerified>()(
+	"EmailNotVerified",
+	{ message: Schema.String },
+	{ httpApiStatus: 403 },
+) {}
+
+export class InvalidVerificationToken extends Schema.TaggedErrorClass<InvalidVerificationToken>()(
+	"InvalidVerificationToken",
+	{ message: Schema.String },
+	{ httpApiStatus: 400 },
+) {}
+
+export class TokenExpiredError extends Schema.TaggedErrorClass<TokenExpiredError>()(
+	"VerificationTokenExpired",
+	{ message: Schema.String },
+	{ httpApiStatus: 400 },
+) {}

@@ -34,6 +34,9 @@ export const users = pgTable("users", {
 	avatarUrl: varchar("avatar_url"),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	emailVerified: boolean("emailVerified").default(false).notNull(),
+	verificationToken: text("verificationToken"),
+	verificationTokenExpiresAt: timestamp("verificationTokenExpiry"),
 });
 
 export const listings = pgTable(

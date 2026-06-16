@@ -8,9 +8,12 @@ import {
 } from "effect/unstable/httpapi";
 import {
 	EmailAlreadyTaken,
+	EmailNotVerified,
 	InvalidCredentials,
 	InvalidToken,
+	InvalidVerificationToken,
 	TokenExpired,
+	TokenExpiredError,
 } from "./AuthError";
 import { UsersApiGroup } from "../users/UsersApi";
 import { ListingsApiGroup } from "../listings/ListingsApi";
@@ -55,6 +58,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 			error: Schema.Union([
 				InvalidCredentials.pipe(HttpApiSchema.status(401)),
 				RateLimitExceeded.pipe(HttpApiSchema.status(429)),
+				EmailNotVerified.pipe(HttpApiSchema.status(403)),
 			]),
 		}),
 	)
@@ -78,6 +82,13 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 			}),
 			success: Schema.Void,
 			error: RateLimitExceeded.pipe(HttpApiSchema.status(429)),
+		}),
+	)
+	.add(
+		HttpApiEndpoint.post("verifyEmail", "/auth/verify-email", {
+			payload: Schema.Struct({ token: Schema.String }),
+			success: Schema.Void,
+			error: [InvalidVerificationToken, TokenExpiredError],
 		}),
 	) {}
 export class Api extends HttpApi.make("api")
