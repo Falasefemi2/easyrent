@@ -23,6 +23,7 @@ export class RedisService extends Context.Service<
 			key: string,
 			seconds: number,
 		) => Effect.Effect<void, RedisError>;
+		readonly ttl: (key: string) => Effect.Effect<number, RedisError>;
 	}
 >()("easyrent/services/RedisService") {
 	static readonly layer = Layer.effect(
@@ -102,7 +103,15 @@ export class RedisService extends Context.Service<
 							new RedisError({ message: `Redis EXPIRE failed: ${e}` }),
 					}),
 			);
-			return { get, set, del, delPattern, incr, expire };
+
+			const ttl = Effect.fn("RedisService.ttl")(
+				(key: string): Effect.Effect<number, RedisError> =>
+					Effect.tryPromise({
+						try: () => client.ttl(key),
+						catch: (e) => new RedisError({ message: `Redis TTL failed: ${e}` }),
+					}),
+			);
+			return { get, set, del, delPattern, incr, expire, ttl };
 		}),
 	);
 }

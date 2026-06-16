@@ -21,7 +21,7 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 				Effect.gen(function* () {
 					yield* rateLimiters.checkRequest({
 						prefix: "sign-up",
-						limit: 5,
+						limit: 10,
 						windowSeconds: 3600,
 					});
 					return yield* auth.signUp(payload).pipe(Effect.orDie);

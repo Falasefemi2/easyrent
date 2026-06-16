@@ -50,16 +50,22 @@ export class RateLimiter extends Context.Service<
 							.incr(key)
 							.pipe(Effect.catchTag("RedisError", () => Effect.succeed(0)));
 
-						if (count === 1) {
+						let ttl = yield* redis
+							.ttl(key)
+							.pipe(Effect.catchTag("RedisError", () => Effect.succeed(-1)));
+
+						if (ttl === -1) {
 							yield* redis
 								.expire(key, windowSeconds)
 								.pipe(Effect.catchTag("RedisError", () => Effect.void));
+							ttl = windowSeconds;
 						}
 
 						if (count > limit) {
+							const retryAfter = ttl > 0 ? ttl : windowSeconds;
 							return yield* new RateLimitExceeded({
-								message: `Too many requests. Try again in ${windowSeconds} seconds.`,
-								retryAfter: windowSeconds,
+								message: `Too many requests. Try again in ${retryAfter} seconds.`,
+								retryAfter,
 							});
 						}
 					}),
@@ -78,10 +84,12 @@ export class RateLimiter extends Context.Service<
 					Effect.gen(function* () {
 						const req = yield* HttpServerRequest.HttpServerRequest;
 						const ip =
+							(req.headers["cf-connecting-ip"] as string) ??
 							(req.headers["x-forwarded-for"] as string)
 								?.split(",")[0]
 								?.trim() ??
 							(req.headers["x-real-ip"] as string) ??
+							req.remoteAddress ??
 							"unknown";
 
 						yield* check({
