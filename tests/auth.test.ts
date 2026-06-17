@@ -8,7 +8,9 @@ import {
 } from "../src/auth/AuthRepository";
 import { AuthService } from "../src/auth/AuthService";
 import { TokenService } from "../src/auth/TokenService";
-import { describe, it, expect } from "@effect/vitest";
+import { EmailService } from "../src/services/EmailService";
+import { LoggerService } from "../src/services/LoggerService";
+import { describe, it, expect, vi } from "@effect/vitest";
 
 const TestAuthConfig = Layer.succeed(AuthConfig, {
 	accessTokenSecret: new TextEncoder().encode(
@@ -51,6 +53,7 @@ const makeTestAuthRepository = Layer.succeed(
 						passwordHash: params.passwordHash,
 						fullname: params.fullname,
 						avatarUrl: null,
+						emailVerified: true, // Default to true for tests to avoid verification flow
 					};
 					users.set(user.id, user);
 					usersByEmail.set(user.email, user);
@@ -87,15 +90,36 @@ const makeTestAuthRepository = Layer.succeed(
 						}
 					}
 				}),
+
+			storeVerificationToken: () => Effect.void,
+			findByVerificationToken: () => Effect.succeed(Option.none()),
+			markEmailVerified: () => Effect.void,
 		};
 	})(),
 );
+
+const TestEmailService = Layer.succeed(EmailService, {
+	sendVerificationEmail: vi.fn(() => Effect.void),
+	sendPasswordResetEmail: vi.fn(() => Effect.void),
+	sendWelcomeEmail: vi.fn(() => Effect.void),
+});
+
+const TestLoggerService = Layer.succeed(LoggerService, {
+	info: vi.fn(() => Effect.void),
+	warn: vi.fn(() => Effect.void),
+	error: vi.fn(() => Effect.void),
+	debug: vi.fn(() => Effect.void),
+	logRequest: vi.fn(() => Effect.void),
+	logAuthEvent: vi.fn(() => Effect.void),
+});
 
 const testLayer = AuthService.layer.pipe(
 	Layer.provideMerge(makeTestAuthRepository),
 	Layer.provideMerge(TestPasswordService),
 	Layer.provideMerge(TokenService.layer),
 	Layer.provideMerge(TestAuthConfig),
+	Layer.provideMerge(TestEmailService),
+	Layer.provideMerge(TestLoggerService),
 );
 
 describe("AuthService", () => {

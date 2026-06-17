@@ -14,7 +14,7 @@ import {
 	TokenExpiredError,
 } from "./AuthError";
 import { EmailService } from "../services/EmailService";
-import { loadConfig } from "../lib/config";
+import { LoggerService } from "../services/LoggerService";
 
 export interface AuthTokens {
 	accessToken: string;
@@ -65,7 +65,7 @@ export class AuthService extends Context.Service<
 			const tokens = yield* TokenService;
 			const config = yield* AuthConfig;
 			const email = yield* EmailService;
-			const c = yield* loadConfig;
+			const logger = yield* LoggerService;
 
 			const issueTokens = Effect.fn("AuthService.issueTokens")(
 				(userId: string, email: string) =>
@@ -144,9 +144,12 @@ export class AuthService extends Context.Service<
 									),
 								),
 							);
-						yield* Effect.logInfo(
-							`Config: FROM=${c.FROM_EMAIL}, KEY=${c.RESEND_API_KEY?.slice(0, 8)}...`,
-						);
+						yield* logger.logAuthEvent({
+							event: "sign_up",
+							userId: user.id,
+							email: user.email,
+							success: true,
+						});
 
 						return yield* issueTokens(user.id, user.email) as Effect.Effect<
 							AuthTokens,
@@ -179,6 +182,12 @@ export class AuthService extends Context.Service<
 						);
 
 						if (!valid) {
+							yield* logger.logAuthEvent({
+								event: "sign_in",
+								email: params.email,
+								userId: user.id,
+								success: false,
+							});
 							return yield* new InvalidCredentials({
 								message: "Invalid email or password",
 							});
@@ -190,7 +199,16 @@ export class AuthService extends Context.Service<
 							});
 						}
 
-						return yield* issueTokens(user.id, user.email);
+						const tokens = yield* issueTokens(user.id, user.email);
+
+						yield* logger.logAuthEvent({
+							event: "sign_in",
+							userId: user.id,
+							email: user.email,
+							success: true,
+						});
+
+						return tokens;
 					}),
 			);
 

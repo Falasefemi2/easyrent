@@ -1,8 +1,9 @@
 import { Effect, Layer, Context } from "effect";
 import { RateLimiter, RateLimitExceeded } from "../src/services/RateLimiter";
 import { RedisService, RedisError } from "../src/services/RedisService";
+import { LoggerService } from "../src/services/LoggerService";
 import { HttpServerRequest } from "effect/unstable/http";
-import { describe, it, expect } from "@effect/vitest";
+import { describe, it, expect, vi } from "@effect/vitest";
 
 const makeTestRedis = (storage: Map<string, { value: number; ttl: number }>) =>
 	Layer.succeed(
@@ -45,6 +46,18 @@ const makeTestRedis = (storage: Map<string, { value: number; ttl: number }>) =>
 		}),
 	);
 
+const mockLogger = Layer.succeed(
+	LoggerService,
+	LoggerService.of({
+		info: vi.fn(() => Effect.void),
+		warn: vi.fn(() => Effect.void),
+		error: vi.fn(() => Effect.void),
+		debug: vi.fn(() => Effect.void),
+		logRequest: vi.fn(() => Effect.void),
+		logAuthEvent: vi.fn(() => Effect.void),
+	}),
+);
+
 describe("RateLimiter", () => {
 	it.effect("allows requests under the limit", () => {
 		const storage = new Map<string, { value: number; ttl: number }>();
@@ -58,6 +71,7 @@ describe("RateLimiter", () => {
 		}).pipe(
 			Effect.provide(RateLimiter.layer),
 			Effect.provide(makeTestRedis(storage)),
+			Effect.provide(mockLogger),
 		);
 	});
 
@@ -67,6 +81,7 @@ describe("RateLimiter", () => {
 			const storage = new Map<string, { value: number; ttl: number }>();
 			return Effect.gen(function* () {
 				const limiter = yield* RateLimiter;
+				const logger = yield* LoggerService;
 
 				yield* limiter.check({ key: "test", limit: 2, windowSeconds: 60 });
 				yield* limiter.check({ key: "test", limit: 2, windowSeconds: 60 });
@@ -82,9 +97,17 @@ describe("RateLimiter", () => {
 				expect(result._tag).toBe("RateLimitExceeded");
 				expect(result.retryAfter).toBe(30);
 				expect(result.message).toContain("30 seconds");
+
+				expect(logger.warn).toHaveBeenCalledWith("Rate limit exceeded", {
+					key: "test",
+					limit: 2,
+					count: 3,
+					windowSeconds: 60,
+				});
 			}).pipe(
 				Effect.provide(RateLimiter.layer),
 				Effect.provide(makeTestRedis(storage)),
+				Effect.provide(mockLogger),
 			);
 		},
 	);
@@ -112,6 +135,8 @@ describe("RateLimiter", () => {
 		}).pipe(
 			Effect.provide(RateLimiter.layer),
 			Effect.provide(makeTestRedis(storage)),
+			Effect.provide(mockLogger),
 		);
 	});
 });
+

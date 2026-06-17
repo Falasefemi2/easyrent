@@ -1,6 +1,7 @@
 import { Context, Effect, Layer, Schema } from "effect";
 import { RedisService } from "./RedisService";
 import { HttpServerRequest } from "effect/unstable/http";
+import { LoggerService } from "./LoggerService";
 
 export class RateLimitExceeded extends Schema.TaggedErrorClass<RateLimitExceeded>()(
 	"RateLimitExceeded",
@@ -34,53 +35,47 @@ export class RateLimiter extends Context.Service<
 		RateLimiter,
 		Effect.gen(function* () {
 			const redis = yield* RedisService;
+			const logger = yield* LoggerService;
 
-			const check = Effect.fn("RateLimiter.check")(
-				({
-					key,
-					limit,
-					windowSeconds,
-				}: {
-					key: string;
-					limit: number;
-					windowSeconds: number;
-				}): Effect.Effect<void, RateLimitExceeded> =>
-					Effect.gen(function* () {
-						const count = yield* redis
-							.incr(key)
-							.pipe(Effect.catchTag("RedisError", () => Effect.succeed(0)));
+			const check = (params: {
+				key: string;
+				limit: number;
+				windowSeconds: number;
+			}) =>
+				Effect.gen(function* () {
+					const count = yield* redis
+						.incr(params.key)
+						.pipe(Effect.catchTag("RedisError", () => Effect.succeed(0)));
 
-						let ttl = yield* redis
-							.ttl(key)
-							.pipe(Effect.catchTag("RedisError", () => Effect.succeed(-1)));
+					let ttl = yield* redis
+						.ttl(params.key)
+						.pipe(Effect.catchTag("RedisError", () => Effect.succeed(-1)));
 
-						if (ttl === -1) {
-							yield* redis
-								.expire(key, windowSeconds)
-								.pipe(Effect.catchTag("RedisError", () => Effect.void));
-							ttl = windowSeconds;
-						}
+					if (ttl === -1) {
+						yield* redis
+							.expire(params.key, params.windowSeconds)
+							.pipe(Effect.catchTag("RedisError", () => Effect.void));
+						ttl = params.windowSeconds;
+					}
 
-						if (count > limit) {
-							const retryAfter = ttl > 0 ? ttl : windowSeconds;
-							return yield* new RateLimitExceeded({
-								message: `Too many requests. Try again in ${retryAfter} seconds.`,
-								retryAfter,
-							});
-						}
-					}),
-			);
+					if (count > params.limit) {
+						yield* logger.warn("Rate limit exceeded", {
+							key: params.key,
+							limit: params.limit,
+							count,
+							windowSeconds: params.windowSeconds,
+						});
+						const retryAfter = ttl > 0 ? ttl : params.windowSeconds;
+						return yield* new RateLimitExceeded({
+							message: `Too many requests. Try again in ${retryAfter} seconds.`,
+							retryAfter,
+						});
+					}
+				});
 
-			const checkRequest = Effect.fn("RateLimiter.checkRequest")(
-				({
-					prefix,
-					limit,
-					windowSeconds,
-				}: {
-					prefix: string;
-					limit: number;
-					windowSeconds: number;
-				}): Effect.Effect<void, RateLimitExceeded> =>
+			return RateLimiter.of({
+				check,
+				checkRequest: (params) =>
 					Effect.gen(function* () {
 						const req = yield* HttpServerRequest.HttpServerRequest;
 						const ip =
@@ -92,15 +87,13 @@ export class RateLimiter extends Context.Service<
 							req.remoteAddress ??
 							"unknown";
 
-						yield* check({
-							key: `ratelimit:${prefix}:${ip}`,
-							limit,
-							windowSeconds,
+						return yield* check({
+							key: `ratelimit:${params.prefix}:${ip}`,
+							limit: params.limit,
+							windowSeconds: params.windowSeconds,
 						});
 					}),
-			);
-
-			return { check, checkRequest };
+			});
 		}),
 	);
 }

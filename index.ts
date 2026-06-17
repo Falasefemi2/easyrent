@@ -16,6 +16,8 @@ import { RedisService } from "./src/services/RedisService.ts";
 import { CacheService } from "./src/services/CacheService.ts";
 import { EmailService } from "./src/services/EmailService.ts";
 import { FavoritesApiHandlers } from "./src/favorites/http.ts";
+import { RequestLoggerMiddleware } from "./src/middleware/RequestLoggerMiddleware";
+import { LoggerService } from "./src/services/LoggerService.ts";
 
 // Base infrastructure layer — everything that other layers depend on
 const InfraLive = Layer.mergeAll(DatabaseLive, AuthConfig.layer);
@@ -57,25 +59,29 @@ const DocsRoute = HttpApiScalar.layer(Api, { path: "/docs" });
 const AllRoutes = Layer.mergeAll(ApiRoutes, DocsRoute);
 
 const HttpServerLayer = HttpRouter.serve(AllRoutes, {
-	middleware: HttpMiddleware.cors({
-		allowedOrigins: [
-			"http://localhost:3001",
-			"https://easyrent-fe-eight.vercel.app",
-		],
-		allowedMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-		allowedHeaders: [
-			"Content-Type",
-			"Authorization",
-			"traceparent",
-			"tracestate",
-			"b3",
-			"x-b3-traceid",
-			"x-b3-spanid",
-			"x-b3-sampled",
-			"baggage",
-		],
-		credentials: true,
-	}),
+	middleware: (app) =>
+		app.pipe(
+			RequestLoggerMiddleware,
+			HttpMiddleware.cors({
+				allowedOrigins: [
+					"http://localhost:3001",
+					"https://easyrent-fe-eight.vercel.app",
+				],
+				allowedMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+				allowedHeaders: [
+					"Content-Type",
+					"Authorization",
+					"traceparent",
+					"tracestate",
+					"b3",
+					"x-b3-traceid",
+					"x-b3-spanid",
+					"x-b3-sampled",
+					"baggage",
+				],
+				credentials: true,
+			}),
+		),
 }).pipe(Layer.provide(BunHttpServer.layer({ port: 3000 })));
 
 const AppLayer = HttpServerLayer.pipe(
@@ -84,6 +90,7 @@ const AppLayer = HttpServerLayer.pipe(
 	Layer.provide(RepositoriesLive),
 	Layer.provide(CacheLive),
 	Layer.provide(RedisLive),
+	Layer.provide(LoggerService.layer),
 	Layer.provide(InfraLive),
 );
 
