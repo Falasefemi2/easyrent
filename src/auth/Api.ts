@@ -40,10 +40,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				),
 			}),
 			success: AuthTokenSchema,
-			error: Schema.Union([
-				EmailAlreadyTaken.pipe(HttpApiSchema.status(409)),
-				RateLimitExceeded.pipe(HttpApiSchema.status(429)),
-			]),
+			error: Schema.Union([EmailAlreadyTaken, RateLimitExceeded]),
 		}),
 	)
 	.add(
@@ -56,9 +53,9 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 			}),
 			success: AuthTokenSchema,
 			error: Schema.Union([
-				InvalidCredentials.pipe(HttpApiSchema.status(401)),
-				RateLimitExceeded.pipe(HttpApiSchema.status(429)),
-				EmailNotVerified.pipe(HttpApiSchema.status(403)),
+				InvalidCredentials,
+				RateLimitExceeded,
+				EmailNotVerified,
 			]),
 		}),
 	)
@@ -68,11 +65,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				refreshToken: Schema.String,
 			}),
 			success: AuthTokenSchema,
-			error: Schema.Union([
-				InvalidToken.pipe(HttpApiSchema.status(401)),
-				TokenExpired.pipe(HttpApiSchema.status(401)),
-				RateLimitExceeded.pipe(HttpApiSchema.status(429)),
-			]),
+			error: Schema.Union([InvalidToken, TokenExpired, RateLimitExceeded]),
 		}),
 	)
 	.add(
@@ -81,7 +74,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				refreshToken: Schema.String,
 			}),
 			success: Schema.Void,
-			error: RateLimitExceeded.pipe(HttpApiSchema.status(429)),
+			error: RateLimitExceeded,
 		}),
 	)
 	.add(
