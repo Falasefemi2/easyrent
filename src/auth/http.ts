@@ -30,7 +30,7 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 							Effect.catchTag("HashError", Effect.orDie),
 							Effect.catchTag("EffectDrizzleQueryError", Effect.orDie),
 						);
-				}),
+				}).pipe(Effect.catchTag("RateLimitExceeded", Effect.fail)),
 			)
 			.handle("signIn", ({ payload }) =>
 				Effect.gen(function* () {
@@ -45,7 +45,7 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 							Effect.catchTag("HashError", Effect.orDie),
 							Effect.catchTag("EffectDrizzleQueryError", Effect.orDie),
 						);
-				}),
+				}).pipe(Effect.catchTag("RateLimitExceeded", Effect.fail)),
 			)
 			.handle("refresh", ({ payload }) =>
 				Effect.gen(function* () {
@@ -57,7 +57,7 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 					return yield* auth
 						.refresh(payload.refreshToken)
 						.pipe(Effect.catchTag("EffectDrizzleQueryError", Effect.orDie));
-				}),
+				}).pipe(Effect.catchTag("RateLimitExceeded", Effect.fail)),
 			)
 			.handle("verifyEmail", ({ payload }) => auth.verifyEmail(payload.token))
 			.handle("signOut", ({ payload }) =>
