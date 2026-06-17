@@ -78,7 +78,7 @@ export class LoggerService extends Context.Service<
 						axiom.ingest(dataset, [
 							{
 								_time: new Date().toISOString(),
-								environment: process.env.NODE_ENV ?? "development",
+								environment: process.env.NODE_ENV ?? "production",
 								...event,
 							},
 						]);
