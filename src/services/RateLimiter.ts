@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, Effect, Layer, Schema, Option } from "effect";
 import { RedisService } from "./RedisService";
 import { HttpServerRequest } from "effect/unstable/http";
 import { LoggerService } from "./LoggerService";
@@ -85,8 +85,7 @@ export class RateLimiter extends Context.Service<
 								?.split(",")[0]
 								?.trim() ??
 							(req.headers["x-real-ip"] as string) ??
-							req.remoteAddress ??
-							"unknown";
+							Option.getOrElse(req.remoteAddress, () => "unknown");
 
 						return yield* check({
 							key: `ratelimit:${params.prefix}:${ip}`,

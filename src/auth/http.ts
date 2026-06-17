@@ -24,7 +24,12 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 						limit: 10,
 						windowSeconds: 3600,
 					});
-					return yield* auth.signUp(payload).pipe(Effect.orDie);
+					return yield* auth
+						.signUp(payload)
+						.pipe(
+							Effect.catchTag("HashError", Effect.orDie),
+							Effect.catchTag("EffectDrizzleQueryError", Effect.orDie),
+						);
 				}),
 			)
 			.handle("signIn", ({ payload }) =>
@@ -34,7 +39,12 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 						limit: 10,
 						windowSeconds: 900,
 					});
-					return yield* auth.signIn(payload).pipe(Effect.orDie);
+					return yield* auth
+						.signIn(payload)
+						.pipe(
+							Effect.catchTag("HashError", Effect.orDie),
+							Effect.catchTag("EffectDrizzleQueryError", Effect.orDie),
+						);
 				}),
 			)
 			.handle("refresh", ({ payload }) =>
@@ -44,12 +54,16 @@ export const AuthApiHandlers = HttpApiBuilder.group(
 						limit: 30,
 						windowSeconds: 3600,
 					});
-					return yield* auth.refresh(payload.refreshToken).pipe(Effect.orDie);
+					return yield* auth
+						.refresh(payload.refreshToken)
+						.pipe(Effect.catchTag("EffectDrizzleQueryError", Effect.orDie));
 				}),
 			)
 			.handle("verifyEmail", ({ payload }) => auth.verifyEmail(payload.token))
 			.handle("signOut", ({ payload }) =>
-				auth.signOut(payload.refreshToken).pipe(Effect.orDie),
+				auth
+					.signOut(payload.refreshToken)
+					.pipe(Effect.catchTag("EffectDrizzleQueryError", Effect.orDie)),
 			);
 	}),
 ).pipe(
