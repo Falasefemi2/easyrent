@@ -9,6 +9,7 @@ export class RateLimitExceeded extends Schema.TaggedErrorClass<RateLimitExceeded
 		message: Schema.String,
 		retryAfter: Schema.Number,
 	},
+	{ httpApiStatus: 429 },
 ) {}
 
 export class RateLimiter extends Context.Service<
