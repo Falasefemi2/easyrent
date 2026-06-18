@@ -40,7 +40,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				),
 			}),
 			success: AuthTokenSchema,
-			error: Schema.Union([EmailAlreadyTaken, RateLimitExceeded]),
+			error: [EmailAlreadyTaken, RateLimitExceeded],
 		}),
 	)
 	.add(
@@ -52,11 +52,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				password: Schema.String.pipe(Schema.check(Schema.isMinLength(8))),
 			}),
 			success: AuthTokenSchema,
-			error: Schema.Union([
-				InvalidCredentials,
-				RateLimitExceeded,
-				EmailNotVerified,
-			]),
+			error: [InvalidCredentials, RateLimitExceeded, EmailNotVerified],
 		}),
 	)
 	.add(
@@ -65,7 +61,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				refreshToken: Schema.String,
 			}),
 			success: AuthTokenSchema,
-			error: Schema.Union([InvalidToken, TokenExpired, RateLimitExceeded]),
+			error: [InvalidToken, TokenExpired, RateLimitExceeded],
 		}),
 	)
 	.add(
