@@ -26,7 +26,7 @@ export class AuthConfig extends Context.Service<AuthConfig, AuthConfigShape>()(
 				refreshTokenTtlDays: parseRefreshTokenExpiry(
 					config.REFRESH_TOKEN_EXPIRY,
 				),
-				port: parseInt(config.PORT),
+				port: parseInt(config.PORT, 10),
 				databaseUrl: config.DATABASE_URL,
 			};
 		}),
@@ -43,7 +43,7 @@ function parseAccessTokenExpiry(expiry: string): number {
 		throw new Error(
 			`Invalid ACCESS_TOKEN_EXPIRY: "${expiry}". Expected format: 15m, 1h, 30s`,
 		);
-	const value = parseInt(match[1]!);
+	const value = parseInt(match[1]!, 10);
 	switch (match[2]) {
 		case "s":
 			return value;
@@ -62,7 +62,7 @@ function parseRefreshTokenExpiry(expiry: string): number {
 		throw new Error(
 			`Invalid REFRESH_TOKEN_EXPIRY: "${expiry}". Expected format: 7d, 2w`,
 		);
-	const value = parseInt(match[1]!);
+	const value = parseInt(match[1]!, 10);
 	switch (match[2]) {
 		case "d":
 			return value;

@@ -1,8 +1,8 @@
-import { Context, Effect, Layer, Option } from "effect";
-import { eq, and, isNull } from "drizzle-orm";
-import { PgDatabase } from "../db";
-import { users, refreshTokens } from "../db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
+import { Context, Effect, Layer, Option } from "effect";
+import { PgDatabase } from "../db";
+import { refreshTokens, users } from "../db/schema";
 
 export interface CreateUserParams {
 	email: string;

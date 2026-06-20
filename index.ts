@@ -1,23 +1,23 @@
+import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
+import { Layer } from "effect";
+import { HttpMiddleware, HttpRouter } from "effect/unstable/http";
 import { HttpApiBuilder, HttpApiScalar } from "effect/unstable/httpapi";
 import { Api } from "./src/auth/Api";
-import { Layer } from "effect";
-import { AuthApiHandlers } from "./src/auth/http";
-import { HttpMiddleware, HttpRouter } from "effect/unstable/http";
-import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
-import { AuthorizationLayer } from "./src/auth/Authorization";
 import { AuthConfig } from "./src/auth/AuthConfig";
-import { DatabaseLive } from "./src/db";
-import { UsersApiHandlers } from "./src/users/http";
-import { ListingsApiHandlers } from "./src/listings/http";
-import { UsersRepository } from "./src/users/UsersRepository";
+import { AuthorizationLayer } from "./src/auth/Authorization";
+import { AuthApiHandlers } from "./src/auth/http";
 import { TokenService } from "./src/auth/TokenService";
-import { ImageUploadService } from "./src/services/UploadThingService";
-import { RedisService } from "./src/services/RedisService.ts";
+import { DatabaseLive } from "./src/db";
+import { FavoritesApiHandlers } from "./src/favorites/http.ts";
+import { ListingsApiHandlers } from "./src/listings/http";
+import { RequestLoggerMiddleware } from "./src/middleware/RequestLoggerMiddleware";
 import { CacheService } from "./src/services/CacheService.ts";
 import { EmailService } from "./src/services/EmailService.ts";
-import { FavoritesApiHandlers } from "./src/favorites/http.ts";
-import { RequestLoggerMiddleware } from "./src/middleware/RequestLoggerMiddleware";
 import { LoggerService } from "./src/services/LoggerService.ts";
+import { RedisService } from "./src/services/RedisService.ts";
+import { ImageUploadService } from "./src/services/UploadThingService";
+import { UsersApiHandlers } from "./src/users/http";
+import { UsersRepository } from "./src/users/UsersRepository";
 
 // Base infrastructure layer — everything that other layers depend on
 const InfraLive = Layer.mergeAll(DatabaseLive, AuthConfig.layer);

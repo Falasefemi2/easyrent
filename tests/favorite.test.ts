@@ -1,11 +1,11 @@
-import { Effect, Layer, Exit, Cause, Option } from "effect";
-import { describe, it, expect } from "@effect/vitest";
+import { describe, expect, it } from "@effect/vitest";
+import { Cause, Effect, Exit, Layer, Option } from "effect";
 import {
-	FavoritesRepository,
 	type FavoriteListingRow,
+	FavoritesRepository,
 } from "../src/favorites/FavoritesRepository";
-import type { ListingRow } from "../src/listings/ListingsRepository";
 import { FavoritesService } from "../src/favorites/FavoritesService";
+import type { ListingRow } from "../src/listings/ListingsRepository";
 
 const seedListings = new Map<string, ListingRow>([
 	[

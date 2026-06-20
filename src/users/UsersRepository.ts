@@ -1,8 +1,8 @@
+import { eq } from "drizzle-orm";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
-import { Effect, Context, Option, Layer } from "effect";
+import { Context, Effect, Layer, Option } from "effect";
 import { PgDatabase } from "../db";
 import { users } from "../db/schema";
-import { eq } from "drizzle-orm";
 
 type DbEffect<A> = Effect.Effect<A, EffectDrizzleQueryError>;
 

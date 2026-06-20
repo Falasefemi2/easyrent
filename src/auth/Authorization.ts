@@ -1,10 +1,8 @@
-import { Effect, Layer, Schema } from "effect";
-import { Context } from "effect";
+import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import { HttpApiMiddleware, HttpApiSecurity } from "effect/unstable/httpapi";
-import { TokenService } from "./TokenService";
-import { AuthRepository } from "./AuthRepository";
-import { Redacted } from "effect";
 import { AuthConfig } from "./AuthConfig";
+import { AuthRepository } from "./AuthRepository";
+import { TokenService } from "./TokenService";
 
 export class CurrentUser extends Context.Service<
 	CurrentUser,

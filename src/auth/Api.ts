@@ -5,6 +5,10 @@ import {
 	HttpApiGroup,
 	OpenApi,
 } from "effect/unstable/httpapi";
+import { FavoritesApiGroup } from "../favorites/FavoritesApi";
+import { ListingsApiGroup } from "../listings/ListingsApi";
+import { RateLimitExceeded } from "../services/RateLimiter";
+import { UsersApiGroup } from "../users/UsersApi";
 import {
 	EmailAlreadyTaken,
 	EmailNotVerified,
@@ -14,10 +18,7 @@ import {
 	TokenExpired,
 	TokenExpiredError,
 } from "./AuthError";
-import { UsersApiGroup } from "../users/UsersApi";
-import { ListingsApiGroup } from "../listings/ListingsApi";
-import { FavoritesApiGroup } from "../favorites/FavoritesApi";
-import { RateLimitExceeded } from "../services/RateLimiter";
+
 const AuthTokenSchema = Schema.Struct({
 	accessToken: Schema.String,
 	refreshToken: Schema.String,

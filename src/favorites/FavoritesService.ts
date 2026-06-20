@@ -1,13 +1,13 @@
 import { Context, Effect, Layer } from "effect";
-import {
-	FavoritesRepository,
-	type FavoriteListingRow,
-} from "./FavoritesRepository";
-import { AlreadyFavorited, FavoriteNotFound } from "./FavoritesError";
 import type {
-	PaginationParams,
 	PaginatedResult,
+	PaginationParams,
 } from "../listings/ListingsRepository";
+import { AlreadyFavorited, FavoriteNotFound } from "./FavoritesError";
+import {
+	type FavoriteListingRow,
+	FavoritesRepository,
+} from "./FavoritesRepository";
 
 export class FavoritesService extends Context.Service<
 	FavoritesService,

@@ -1,9 +1,9 @@
-import { Effect, Layer, Context } from "effect";
-import { RateLimiter, RateLimitExceeded } from "../src/services/RateLimiter";
-import { RedisService, RedisError } from "../src/services/RedisService";
-import { LoggerService } from "../src/services/LoggerService";
+import { describe, expect, it, vi } from "@effect/vitest";
+import { Effect, Layer } from "effect";
 import { HttpServerRequest } from "effect/unstable/http";
-import { describe, it, expect, vi } from "@effect/vitest";
+import { LoggerService } from "../src/services/LoggerService";
+import { RateLimiter } from "../src/services/RateLimiter";
+import { RedisService } from "../src/services/RedisService";
 
 const makeTestRedis = (storage: Map<string, { value: number; ttl: number }>) =>
 	Layer.succeed(
@@ -12,7 +12,7 @@ const makeTestRedis = (storage: Map<string, { value: number; ttl: number }>) =>
 			get: (key) => Effect.succeed(storage.get(key)?.value.toString() ?? null),
 			set: (key, value, ttlSeconds) =>
 				Effect.sync(() => {
-					storage.set(key, { value: parseInt(value), ttl: ttlSeconds });
+					storage.set(key, { value: parseInt(value, 10), ttl: ttlSeconds });
 				}),
 			del: (...keys) =>
 				Effect.sync(() => {
@@ -139,4 +139,3 @@ describe("RateLimiter", () => {
 		);
 	});
 });
-

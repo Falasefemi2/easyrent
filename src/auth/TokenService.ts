@@ -1,8 +1,8 @@
-import { Context, Effect, Layer } from "effect";
-import { InvalidToken, TokenExpired } from "./AuthError";
-import { AuthConfig } from "./AuthConfig";
-import { jwtVerify, SignJWT } from "jose";
 import * as crypto from "node:crypto";
+import { Context, Effect, Layer } from "effect";
+import { jwtVerify, SignJWT } from "jose";
+import { AuthConfig } from "./AuthConfig";
+import { InvalidToken, TokenExpired } from "./AuthError";
 
 export interface AccessTokenPayload {
 	sub: string;
@@ -51,7 +51,7 @@ export class TokenService extends Context.Service<
 						try: () =>
 							jwtVerify(token, config.accessTokenSecret).then((r) => ({
 								sub: r.payload.sub as string,
-								email: r.payload["email"] as string,
+								email: r.payload.email as string,
 							})),
 						catch: (e) => {
 							const msg = String(e);

@@ -1,9 +1,8 @@
-import { Context, Effect, Layer, Option } from "effect";
-import { AuthRepository } from "./AuthRepository";
-import { PasswordService, type HashError } from "./PasswordService";
-import { TokenService } from "./TokenService";
-import { AuthConfig } from "./AuthConfig";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core";
+import { Context, Effect, Layer, Option } from "effect";
+import { EmailService } from "../services/EmailService";
+import { LoggerService } from "../services/LoggerService";
+import { AuthConfig } from "./AuthConfig";
 import {
 	EmailAlreadyTaken,
 	EmailNotVerified,
@@ -13,8 +12,9 @@ import {
 	TokenExpired,
 	TokenExpiredError,
 } from "./AuthError";
-import { EmailService } from "../services/EmailService";
-import { LoggerService } from "../services/LoggerService";
+import { AuthRepository } from "./AuthRepository";
+import { type HashError, PasswordService } from "./PasswordService";
+import { TokenService } from "./TokenService";
 
 export interface AuthTokens {
 	accessToken: string;
