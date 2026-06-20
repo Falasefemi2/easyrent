@@ -3,7 +3,6 @@ import {
 	HttpApi,
 	HttpApiEndpoint,
 	HttpApiGroup,
-	HttpApiSchema,
 	OpenApi,
 } from "effect/unstable/httpapi";
 import {
@@ -70,7 +69,7 @@ export class AuthApiGroup extends HttpApiGroup.make("auth")
 				refreshToken: Schema.String,
 			}),
 			success: Schema.Void,
-			error: RateLimitExceeded,
+			error: [RateLimitExceeded],
 		}),
 	)
 	.add(
