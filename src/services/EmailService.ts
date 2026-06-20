@@ -1,7 +1,7 @@
-import * as Effect from "effect/Effect";
-import * as Schema from "effect/Schema";
-import * as Layer from "effect/Layer";
 import * as Context from "effect/Context";
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as Schema from "effect/Schema";
 import { Resend } from "resend";
 import { loadConfig } from "../lib/config";
 

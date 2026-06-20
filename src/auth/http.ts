@@ -1,14 +1,14 @@
-import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { Api } from "./Api";
 import { Effect, Layer } from "effect";
-import { AuthService } from "./AuthService";
-import { AuthRepository } from "./AuthRepository";
-import { PasswordService } from "./PasswordService";
-import { TokenService } from "./TokenService";
-import { AuthConfig } from "./AuthConfig";
+import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { DatabaseLive } from "../db";
 import { RateLimiter } from "../services/RateLimiter";
 import { RedisService } from "../services/RedisService.ts";
+import { Api } from "./Api";
+import { AuthConfig } from "./AuthConfig";
+import { AuthRepository } from "./AuthRepository";
+import { AuthService } from "./AuthService";
+import { PasswordService } from "./PasswordService";
+import { TokenService } from "./TokenService";
 
 export const AuthApiHandlers = HttpApiBuilder.group(
 	Api,

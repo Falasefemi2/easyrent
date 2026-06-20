@@ -1,13 +1,12 @@
 import { Effect, Layer } from "effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { Api } from "../auth/Api";
-import { CurrentUser } from "../auth/Authorization";
-import { AuthorizationLayer } from "../auth/Authorization";
-import { FavoritesService } from "./FavoritesService";
-import { FavoritesRepository } from "./FavoritesRepository";
-import { TokenService } from "../auth/TokenService";
 import { AuthConfig } from "../auth/AuthConfig";
+import { AuthorizationLayer, CurrentUser } from "../auth/Authorization";
+import { TokenService } from "../auth/TokenService";
 import { DatabaseLive } from "../db";
+import { FavoritesRepository } from "./FavoritesRepository";
+import { FavoritesService } from "./FavoritesService";
 
 export const FavoritesApiHandlers = HttpApiBuilder.group(
 	Api,

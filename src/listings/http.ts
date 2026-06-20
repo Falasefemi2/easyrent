@@ -1,23 +1,22 @@
-import { Effect, Layer } from "effect";
-import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { HttpServerRequest } from "effect/unstable/http";
-import { Api } from "../auth/Api";
-import { CurrentUser } from "../auth/Authorization";
-import { AuthorizationLayer } from "../auth/Authorization";
-import { TokenService } from "../auth/TokenService";
-import { AuthConfig } from "../auth/AuthConfig";
-import { DatabaseLive } from "../db";
 import { BunServices } from "@effect/platform-bun";
+import { Effect, Layer } from "effect";
+import { HttpServerRequest } from "effect/unstable/http";
 import type { PersistedFile } from "effect/unstable/http/Multipart";
-import { ListingService } from "./ListingsService";
+import { HttpApiBuilder } from "effect/unstable/httpapi";
+import { Api } from "../auth/Api";
+import { AuthConfig } from "../auth/AuthConfig";
+import { AuthorizationLayer, CurrentUser } from "../auth/Authorization";
+import { TokenService } from "../auth/TokenService";
+import { DatabaseLive } from "../db";
+import { CacheService } from "../services/CacheService";
+import { RateLimiter } from "../services/RateLimiter";
+import { RedisService } from "../services/RedisService.ts";
 import {
 	ImageUploadError,
 	ImageUploadService,
 } from "../services/UploadThingService";
 import { ListingRepository } from "./ListingsRepository";
-import { CacheService } from "../services/CacheService";
-import { RedisService } from "../services/RedisService.ts";
-import { RateLimiter } from "../services/RateLimiter";
+import { ListingService } from "./ListingsService";
 
 export const ListingsApiHandlers = HttpApiBuilder.group(
 	Api,
@@ -99,7 +98,7 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 						),
 					);
 
-					const fileField = persisted["file"];
+					const fileField = persisted.file;
 					const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField;
 
 					if (!fileEntry || typeof fileEntry === "string") {
@@ -108,15 +107,15 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 						});
 					}
 
-					const typeField = persisted["type"];
+					const typeField = persisted.type;
 					const type = Array.isArray(typeField)
 						? typeField[0]
 						: (typeField ?? "image");
 
-					const orderField = persisted["order"];
+					const orderField = persisted.order;
 					const order = Array.isArray(orderField)
-						? parseInt(orderField[0] as string)
-						: parseInt((orderField as string) ?? "0");
+						? parseInt(orderField[0] as string, 10)
+						: parseInt((orderField as string) ?? "0", 10);
 
 					return yield* listingsService
 						.uploadMedia({
@@ -125,7 +124,7 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
 							fileName: (fileEntry as PersistedFile).name,
 							filePath: (fileEntry as PersistedFile).path,
 							type: type as "image" | "video",
-							order: isNaN(order) ? 0 : order,
+							order: Number.isNaN(order) ? 0 : order,
 						})
 						.pipe(Effect.catchTag("ImageUploadError", Effect.die));
 				}),

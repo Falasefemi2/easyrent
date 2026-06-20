@@ -1,18 +1,18 @@
+import { defineRelations } from "drizzle-orm";
 import {
-	pgTable,
-	uuid,
-	varchar,
-	text,
 	boolean,
-	timestamp,
-	numeric,
-	integer,
-	pgEnum,
 	customType,
 	index,
+	integer,
+	numeric,
+	pgEnum,
+	pgTable,
 	primaryKey,
+	text,
+	timestamp,
+	uuid,
+	varchar,
 } from "drizzle-orm/pg-core";
-import { defineRelations } from "drizzle-orm";
 
 export const statusEnum = pgEnum("status", ["avaiable", "rented", "inative"]);
 export const mediaTypeEnum = pgEnum("media_type", ["image", "video"]);

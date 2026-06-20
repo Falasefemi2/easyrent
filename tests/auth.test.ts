@@ -1,16 +1,16 @@
-import { Effect, Layer, Option, Cause, Exit } from "effect";
+import { describe, expect, it, vi } from "@effect/vitest";
+import { Cause, Effect, Exit, Layer, Option } from "effect";
 import { AuthConfig } from "../src/auth/AuthConfig";
-import { PasswordService } from "../src/auth/PasswordService";
 import {
 	AuthRepository,
 	type RefreshTokenRow,
 	type UserRow,
 } from "../src/auth/AuthRepository";
 import { AuthService } from "../src/auth/AuthService";
+import { PasswordService } from "../src/auth/PasswordService";
 import { TokenService } from "../src/auth/TokenService";
 import { EmailService } from "../src/services/EmailService";
 import { LoggerService } from "../src/services/LoggerService";
-import { describe, it, expect, vi } from "@effect/vitest";
 
 const TestAuthConfig = Layer.succeed(AuthConfig, {
 	accessTokenSecret: new TextEncoder().encode(

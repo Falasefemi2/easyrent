@@ -1,4 +1,4 @@
-import { Effect, Clock } from "effect";
+import { Clock, Effect } from "effect";
 import { HttpMiddleware, HttpServerRequest } from "effect/unstable/http";
 import { LoggerService } from "../services/LoggerService";
 
@@ -24,4 +24,3 @@ export const RequestLoggerMiddleware = HttpMiddleware.make((httpApp) =>
 		return response;
 	}),
 );
-

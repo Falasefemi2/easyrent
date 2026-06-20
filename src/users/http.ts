@@ -1,20 +1,19 @@
+import { BunServices } from "@effect/platform-bun";
 import { Effect, Layer, Option } from "effect";
-import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { HttpServerRequest } from "effect/unstable/http";
-import { CurrentUser } from "../auth/Authorization";
-import { UsersRepository } from "./UsersRepository";
-import { AuthorizationLayer } from "../auth/Authorization";
-import { TokenService } from "../auth/TokenService";
-import { AuthConfig } from "../auth/AuthConfig";
-import { DatabaseLive } from "../db";
+import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { Api } from "../auth/Api";
+import { AuthConfig } from "../auth/AuthConfig";
+import { AuthorizationLayer, CurrentUser } from "../auth/Authorization";
+import { TokenService } from "../auth/TokenService";
+import { DatabaseLive } from "../db";
+import { CACHE_TTL, CacheKeys, CacheService } from "../services/CacheService";
+import { RedisService } from "../services/RedisService";
 import {
 	ImageUploadError,
 	ImageUploadService,
 } from "../services/UploadThingService";
-import { BunServices } from "@effect/platform-bun";
-import { CacheService, CacheKeys, CACHE_TTL } from "../services/CacheService";
-import { RedisService } from "../services/RedisService";
+import { UsersRepository } from "./UsersRepository";
 
 export const UsersApiHandlers = HttpApiBuilder.group(
 	Api,
@@ -35,7 +34,7 @@ export const UsersApiHandlers = HttpApiBuilder.group(
 						),
 					);
 
-					const fileField = persisted["file"];
+					const fileField = persisted.file;
 					const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField;
 
 					if (!fileEntry || typeof fileEntry === "string") {
