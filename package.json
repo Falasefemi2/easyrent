@@ -24,6 +24,7 @@
 		"@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@93cb4f8",
 		"@effect/sql-pg": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@93cb4f8",
 		"@effect/vitest": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@93cb4f8",
+		"@getbrevo/brevo": "^5.0.4",
 		"argon2": "^0.44.0",
 		"cloudinary": "^2.10.0",
 		"dotenv": "^17.4.2",
