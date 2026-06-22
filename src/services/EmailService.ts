@@ -2,8 +2,8 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
-import { Resend } from "resend";
 import { loadConfig } from "../lib/config";
+import { BrevoClient } from "@getbrevo/brevo";
 
 export class EmailError extends Schema.TaggedErrorClass<EmailError>()(
 	"EmailError",
@@ -26,7 +26,7 @@ export class EmailService extends Context.Service<
 		EmailService,
 		Effect.gen(function* () {
 			const config = yield* loadConfig;
-			const resend = new Resend(config.RESEND_API_KEY);
+			const brevo = new BrevoClient({ apiKey: config.BREVO_API_KEY });
 
 			const sendVerificationEmail = Effect.fn(
 				"EmailService.sendVerificationEmail",
@@ -38,12 +38,12 @@ export class EmailService extends Context.Service<
 				}): Effect.Effect<void, EmailError> =>
 					Effect.tryPromise({
 						try: () =>
-							resend.emails
-								.send({
-									from: config.FROM_EMAIL,
-									to: params.to,
+							brevo.transactionalEmails //
+								.sendTransacEmail({
+									sender: { email: config.FROM_EMAIL, name: "EasyRent" },
+									to: [{ email: params.to }],
 									subject: "Verify your EasyRent email",
-									html: `
+									htmlContent: `
                   <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
                     <h2 style="color: #E8442A;">Welcome to EasyRent, ${params.fullname}!</h2>
                     <p>Click the button below to verify your email address.</p>

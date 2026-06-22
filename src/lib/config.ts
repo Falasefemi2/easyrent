@@ -18,6 +18,7 @@ export class EnvConfig extends Schema.Class<EnvConfig>("EnvConfig")({
 	FRONTEND_URL: Schema.String,
 	AXIOM_TOKEN: Schema.String,
 	AXIOM_DATASET: Schema.String,
+	BREVO_API_KEY: Schema.String,
 }) {}
 
 export const loadConfig = Schema.decodeUnknownExit(EnvConfig)(process.env).pipe(
