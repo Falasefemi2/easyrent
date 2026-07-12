@@ -1,45 +1,47 @@
 {
-	"name": "easyrent",
-	"module": "index.ts",
-	"scripts": {
-		"prepare": "effect-language-service patch",
-		"db:generate": "drizzle-kit generate",
-		"check": "biome check --write .",
-		"db:migrate": "drizzle-kit migrate",
-		"db:push": "drizzle-kit push",
-		"db:studio": "drizzle-kit studio",
-		"test": "vitest run",
-		"start": "bun run index.ts",
-		"test:watch": "vitest",
-		"build": "bun build ./index.ts --outdir ./dist --target bun",
-		"type-check": "tsc --noEmit"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"private": true,
-	"type": "module",
-	"dependencies": {
-		"@axiomhq/js": "^1.6.1",
-		"@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@93cb4f8",
-		"@effect/sql-pg": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@93cb4f8",
-		"@effect/vitest": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@93cb4f8",
-		"@getbrevo/brevo": "^5.0.4",
-		"argon2": "^0.44.0",
-		"cloudinary": "^2.10.0",
-		"dotenv": "^17.4.2",
-		"drizzle-orm": "1.0.0-rc.1",
-		"effect": "4.0.0-beta.83",
-		"ioredis": "^5.11.1",
-		"jose": "^6.2.3",
-		"resend": "^6.12.4"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "2.4.16",
-		"@effect/language-service": "^0.86.2",
-		"@types/bun": "latest",
-		"@types/pg": "^8.20.0",
-		"drizzle-kit": "^1.0.0-beta.20",
-		"pg": "^8.21.0"
-	}
+  "name": "easyrent",
+  "module": "index.ts",
+  "scripts": {
+    "prepare": "effect-language-service patch",
+    "db:generate": "drizzle-kit generate",
+    "check": "biome check --write .",
+    "format": "biome format --write .",
+    "lint": "biome lint --write .",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest run",
+    "start": "bun run index.ts",
+    "test:watch": "vitest",
+    "build": "bun build ./index.ts --outdir ./dist --target bun",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@axiomhq/js": "^1.6.1",
+    "@effect/platform-bun": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-bun@93cb4f8",
+    "@effect/sql-pg": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/sql-pg@93cb4f8",
+    "@effect/vitest": "https://pkg.pr.new/Effect-TS/effect-smol/@effect/vitest@93cb4f8",
+    "@getbrevo/brevo": "^5.0.4",
+    "argon2": "^0.44.0",
+    "cloudinary": "^2.10.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "1.0.0-rc.1",
+    "effect": "4.0.0-beta.83",
+    "ioredis": "^5.11.1",
+    "jose": "^6.2.3",
+    "resend": "^6.12.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.3",
+    "@effect/language-service": "^0.86.2",
+    "@types/bun": "latest",
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^1.0.0-beta.20",
+    "pg": "^8.21.0"
+  }
 }

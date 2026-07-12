@@ -1,113 +1,101 @@
-import { BunServices } from "@effect/platform-bun";
-import { Effect, Layer, Option } from "effect";
-import { HttpServerRequest } from "effect/unstable/http";
-import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { Api } from "../auth/Api";
-import { AuthConfig } from "../auth/AuthConfig";
-import { AuthorizationLayer, CurrentUser } from "../auth/Authorization";
-import { TokenService } from "../auth/TokenService";
-import { DatabaseLive } from "../db";
-import { CACHE_TTL, CacheKeys, CacheService } from "../services/CacheService";
-import { RedisService } from "../services/RedisService";
-import {
-	ImageUploadError,
-	ImageUploadService,
-} from "../services/UploadThingService";
-import { UsersRepository } from "./UsersRepository";
+import { BunServices } from "@effect/platform-bun"
+import { Effect, Layer, Option } from "effect"
+import { HttpServerRequest } from "effect/unstable/http"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { Api } from "../auth/Api"
+import { AuthConfig } from "../auth/AuthConfig"
+import { AuthorizationLayer, CurrentUser } from "../auth/Authorization"
+import { TokenService } from "../auth/TokenService"
+import { DatabaseLive } from "../db"
+import { CACHE_TTL, CacheKeys, CacheService } from "../services/CacheService"
+import { RedisService } from "../services/RedisService"
+import { ImageUploadError, ImageUploadService } from "../services/UploadThingService"
+import { UsersRepository } from "./UsersRepository"
 
 export const UsersApiHandlers = HttpApiBuilder.group(
-	Api,
-	"users",
-	Effect.fn(function* (handlers) {
-		return handlers
-			.handle("uploadAvatar", () =>
-				Effect.gen(function* () {
-					const user = yield* CurrentUser;
-					const imageUpload = yield* ImageUploadService;
-					const usersRepo = yield* UsersRepository;
-					const req = yield* HttpServerRequest.HttpServerRequest;
-					const cache = yield* CacheService;
+  Api,
+  "users",
+  Effect.fn(function* (handlers) {
+    return handlers
+      .handle("uploadAvatar", () =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          const imageUpload = yield* ImageUploadService
+          const usersRepo = yield* UsersRepository
+          const req = yield* HttpServerRequest.HttpServerRequest
+          const cache = yield* CacheService
 
-					const persisted = yield* req.multipart.pipe(
-						Effect.mapError(
-							(e) => new ImageUploadError({ message: String(e) }),
-						),
-					);
+          const persisted = yield* req.multipart.pipe(
+            Effect.mapError((e) => new ImageUploadError({ message: String(e) })),
+          )
 
-					const fileField = persisted.file;
-					const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField;
+          const fileField = persisted.file
+          const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField
 
-					if (!fileEntry || typeof fileEntry === "string") {
-						return yield* new ImageUploadError({ message: "No file uploaded" });
-					}
+          if (!fileEntry || typeof fileEntry === "string") {
+            return yield* new ImageUploadError({ message: "No file uploaded" })
+          }
 
-					const avatarUrl = yield* imageUpload.uploadFile(
-						fileEntry.name,
-						fileEntry.path,
-					);
+          const avatarUrl = yield* imageUpload.uploadFile(fileEntry.name, fileEntry.path)
 
-					yield* usersRepo
-						.updateAvatar(user.userId, avatarUrl)
-						.pipe(Effect.orDie);
+          yield* usersRepo.updateAvatar(user.userId, avatarUrl).pipe(Effect.orDie)
 
-					yield* cache.invalidate(CacheKeys.user(user.userId));
+          yield* cache.invalidate(CacheKeys.user(user.userId))
 
-					return { avatarUrl };
-				}),
-			)
-			.handle("me", () =>
-				Effect.gen(function* () {
-					const user = yield* CurrentUser;
-					const usersRepo = yield* UsersRepository;
-					const cache = yield* CacheService;
+          return { avatarUrl }
+        }),
+      )
+      .handle("me", () =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          const usersRepo = yield* UsersRepository
+          const cache = yield* CacheService
 
-					const key = CacheKeys.user(user.userId);
-					const cached = yield* cache.getJson<{
-						id: string;
-						email: string;
-						fullname: string;
-						phone: string;
-						avatarUrl: string | null;
-						createdAt: Date;
-					}>(key);
+          const key = CacheKeys.user(user.userId)
+          const cached = yield* cache.getJson<{
+            id: string
+            email: string
+            fullname: string
+            phone: string
+            avatarUrl: string | null
+            createdAt: Date
+          }>(key)
 
-					if (cached) {
-						return {
-							...cached,
-							createdAt: new Date(cached.createdAt),
-						};
-					}
+          if (cached) {
+            return {
+              ...cached,
+              createdAt: new Date(cached.createdAt),
+            }
+          }
 
-					const maybeUser = yield* usersRepo
-						.findById(user.userId)
-						.pipe(Effect.orDie);
+          const maybeUser = yield* usersRepo.findById(user.userId).pipe(Effect.orDie)
 
-					const result = yield* Option.match(maybeUser, {
-						onNone: () => Effect.die("User not found"),
-						onSome: (u) =>
-							Effect.succeed({
-								id: u.id,
-								email: u.email,
-								fullname: u.fullname,
-								phone: u.phone,
-								avatarUrl: u.avatarUrl ?? null,
-								createdAt: u.createdAt,
-							}),
-					});
+          const result = yield* Option.match(maybeUser, {
+            onNone: () => Effect.die("User not found"),
+            onSome: (u) =>
+              Effect.succeed({
+                id: u.id,
+                email: u.email,
+                fullname: u.fullname,
+                phone: u.phone,
+                avatarUrl: u.avatarUrl ?? null,
+                createdAt: u.createdAt,
+              }),
+          })
 
-					yield* cache.setJson(key, result, CACHE_TTL.user);
-					return result;
-				}),
-			);
-	}),
+          yield* cache.setJson(key, result, CACHE_TTL.user)
+          return result
+        }),
+      )
+  }),
 ).pipe(
-	Layer.provide(AuthorizationLayer),
-	Layer.provide(ImageUploadService.layer),
-	Layer.provide(UsersRepository.layer),
-	Layer.provide(CacheService.layer),
-	Layer.provide(RedisService.layer),
-	Layer.provide(TokenService.layer),
-	Layer.provide(AuthConfig.layer),
-	Layer.provide(DatabaseLive),
-	Layer.provide(BunServices.layer),
-);
+  Layer.provide(AuthorizationLayer),
+  Layer.provide(ImageUploadService.layer),
+  Layer.provide(UsersRepository.layer),
+  Layer.provide(CacheService.layer),
+  Layer.provide(RedisService.layer),
+  Layer.provide(TokenService.layer),
+  Layer.provide(AuthConfig.layer),
+  Layer.provide(DatabaseLive),
+  Layer.provide(BunServices.layer),
+)

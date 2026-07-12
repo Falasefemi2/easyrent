@@ -1,182 +1,164 @@
-import { BunServices } from "@effect/platform-bun";
-import { Effect, Layer } from "effect";
-import { HttpServerRequest } from "effect/unstable/http";
-import type { PersistedFile } from "effect/unstable/http/Multipart";
-import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { Api } from "../auth/Api";
-import { AuthConfig } from "../auth/AuthConfig";
-import { AuthorizationLayer, CurrentUser } from "../auth/Authorization";
-import { TokenService } from "../auth/TokenService";
-import { DatabaseLive } from "../db";
-import { CacheService } from "../services/CacheService";
-import { RateLimiter } from "../services/RateLimiter";
-import { RedisService } from "../services/RedisService.ts";
-import {
-	ImageUploadError,
-	ImageUploadService,
-} from "../services/UploadThingService";
-import { ListingRepository } from "./ListingsRepository";
-import { ListingService } from "./ListingsService";
+import { BunServices } from "@effect/platform-bun"
+import { Effect, Layer } from "effect"
+import { HttpServerRequest } from "effect/unstable/http"
+import type { PersistedFile } from "effect/unstable/http/Multipart"
+import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { Api } from "../auth/Api"
+import { AuthConfig } from "../auth/AuthConfig"
+import { AuthorizationLayer, CurrentUser } from "../auth/Authorization"
+import { TokenService } from "../auth/TokenService"
+import { DatabaseLive } from "../db"
+import { CacheService } from "../services/CacheService"
+import { RateLimiter } from "../services/RateLimiter"
+import { RedisService } from "../services/RedisService.ts"
+import { ImageUploadError, ImageUploadService } from "../services/UploadThingService"
+import { ListingRepository } from "./ListingsRepository"
+import { ListingService } from "./ListingsService"
 
 export const ListingsApiHandlers = HttpApiBuilder.group(
-	Api,
-	"listings",
-	Effect.fn(function* (handlers) {
-		const listingsService = yield* ListingService;
-		const rateLimiters = yield* RateLimiter;
+  Api,
+  "listings",
+  Effect.fn(function* (handlers) {
+    const listingsService = yield* ListingService
+    const rateLimiters = yield* RateLimiter
 
-		return handlers
-			.handle("list", ({ query }) =>
-				Effect.gen(function* () {
-					yield* rateLimiters.checkRequest({
-						prefix: "listings-list",
-						limit: 30,
-						windowSeconds: 60,
-					});
+    return handlers
+      .handle("list", ({ query }) =>
+        Effect.gen(function* () {
+          yield* rateLimiters.checkRequest({
+            prefix: "listings-list",
+            limit: 30,
+            windowSeconds: 60,
+          })
 
-					return yield* listingsService
-						.getAll(
-							{ page: query.page ?? 1, limit: query.limit ?? 20 },
-							{
-								status: query.status,
-								furnished:
-									query.furnished === "true"
-										? true
-										: query.furnished === "false"
-											? false
-											: undefined,
-								rooms: query.rooms,
-								minRooms: query.minRooms,
-								search: query.search,
-							},
-						)
-						.pipe(Effect.orDie);
-				}),
-			)
-			.handle("getById", ({ params }) =>
-				Effect.gen(function* () {
-					yield* rateLimiters.checkRequest({
-						prefix: "listings-getById",
-						limit: 60,
-						windowSeconds: 60,
-					});
+          return yield* listingsService
+            .getAll(
+              { page: query.page ?? 1, limit: query.limit ?? 20 },
+              {
+                status: query.status,
+                furnished: query.furnished === "true" ? true : query.furnished === "false" ? false : undefined,
+                rooms: query.rooms,
+                minRooms: query.minRooms,
+                search: query.search,
+              },
+            )
+            .pipe(Effect.orDie)
+        }),
+      )
+      .handle("getById", ({ params }) =>
+        Effect.gen(function* () {
+          yield* rateLimiters.checkRequest({
+            prefix: "listings-getById",
+            limit: 60,
+            windowSeconds: 60,
+          })
 
-					return yield* listingsService
-						.getById(params.id)
-						.pipe(Effect.catchTag("ListingNotFound", Effect.die));
-				}),
-			)
-			.handle("create", ({ payload }) =>
-				Effect.gen(function* () {
-					const user = yield* CurrentUser;
+          return yield* listingsService.getById(params.id).pipe(Effect.catchTag("ListingNotFound", Effect.die))
+        }),
+      )
+      .handle("create", ({ payload }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
 
-					yield* rateLimiters.check({
-						key: `ratelimit:listings-create:${user.userId}`,
-						limit: 10,
-						windowSeconds: 3600,
-					});
+          yield* rateLimiters.check({
+            key: `ratelimit:listings-create:${user.userId}`,
+            limit: 10,
+            windowSeconds: 3600,
+          })
 
-					return yield* listingsService
-						.create({
-							...payload,
-							landlordId: user.userId,
-						})
-						.pipe(Effect.orDie);
-				}),
-			)
-			.handle("uploadMedia", ({ params }) =>
-				Effect.gen(function* () {
-					const user = yield* CurrentUser;
-					const req = yield* HttpServerRequest.HttpServerRequest;
+          return yield* listingsService
+            .create({
+              ...payload,
+              landlordId: user.userId,
+            })
+            .pipe(Effect.orDie)
+        }),
+      )
+      .handle("uploadMedia", ({ params }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          const req = yield* HttpServerRequest.HttpServerRequest
 
-					const persisted = yield* req.multipart.pipe(
-						Effect.mapError(
-							(e) =>
-								new ImageUploadError({
-									message: String(e),
-								}),
-						),
-					);
+          const persisted = yield* req.multipart.pipe(
+            Effect.mapError(
+              (e) =>
+                new ImageUploadError({
+                  message: String(e),
+                }),
+            ),
+          )
 
-					const fileField = persisted.file;
-					const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField;
+          const fileField = persisted.file
+          const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField
 
-					if (!fileEntry || typeof fileEntry === "string") {
-						return yield* new ImageUploadError({
-							message: "No file uploaded",
-						});
-					}
+          if (!fileEntry || typeof fileEntry === "string") {
+            return yield* new ImageUploadError({
+              message: "No file uploaded",
+            })
+          }
 
-					const typeField = persisted.type;
-					const type = Array.isArray(typeField)
-						? typeField[0]
-						: (typeField ?? "image");
+          const typeField = persisted.type
+          const type = Array.isArray(typeField) ? typeField[0] : (typeField ?? "image")
 
-					const orderField = persisted.order;
-					const order = Array.isArray(orderField)
-						? parseInt(orderField[0] as string, 10)
-						: parseInt((orderField as string) ?? "0", 10);
+          const orderField = persisted.order
+          const order = Array.isArray(orderField)
+            ? parseInt(orderField[0] as string, 10)
+            : parseInt((orderField as string) ?? "0", 10)
 
-					return yield* listingsService
-						.uploadMedia({
-							listingId: params.id,
-							landlordId: user.userId,
-							fileName: (fileEntry as PersistedFile).name,
-							filePath: (fileEntry as PersistedFile).path,
-							type: type as "image" | "video",
-							order: Number.isNaN(order) ? 0 : order,
-						})
-						.pipe(Effect.catchTag("ImageUploadError", Effect.die));
-				}),
-			)
-			.handle("update", ({ params, payload }) =>
-				Effect.gen(function* () {
-					const user = yield* CurrentUser;
-					return yield* listingsService
-						.update(params.id, user.userId, payload)
-						.pipe(Effect.catchTag("ListingForbidden", Effect.die));
-				}),
-			)
-			.handle("delete", ({ params }) =>
-				Effect.gen(function* () {
-					const user = yield* CurrentUser;
-					yield* listingsService
-						.delete(params.id, user.userId)
-						.pipe(Effect.catchTag("ListingNotFound", Effect.die));
-				}),
-			)
-			.handle("myListings", ({ query }) =>
-				Effect.gen(function* () {
-					const user = yield* CurrentUser;
-					return yield* listingsService
-						.getMyListings(user.userId, {
-							page: query.page ?? 1,
-							limit: query.limit ?? 20,
-						})
-						.pipe(Effect.orDie);
-				}),
-			)
-			.handle("updateStatus", ({ params, payload }) =>
-				Effect.gen(function* () {
-					const user = yield* CurrentUser;
-					return yield* listingsService.updateStatus(
-						params.id,
-						user.userId,
-						payload.status,
-					);
-				}),
-			);
-	}),
+          return yield* listingsService
+            .uploadMedia({
+              listingId: params.id,
+              landlordId: user.userId,
+              fileName: (fileEntry as PersistedFile).name,
+              filePath: (fileEntry as PersistedFile).path,
+              type: type as "image" | "video",
+              order: Number.isNaN(order) ? 0 : order,
+            })
+            .pipe(Effect.catchTag("ImageUploadError", Effect.die))
+        }),
+      )
+      .handle("update", ({ params, payload }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          return yield* listingsService
+            .update(params.id, user.userId, payload)
+            .pipe(Effect.catchTag("ListingForbidden", Effect.die))
+        }),
+      )
+      .handle("delete", ({ params }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          yield* listingsService.delete(params.id, user.userId).pipe(Effect.catchTag("ListingNotFound", Effect.die))
+        }),
+      )
+      .handle("myListings", ({ query }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          return yield* listingsService
+            .getMyListings(user.userId, {
+              page: query.page ?? 1,
+              limit: query.limit ?? 20,
+            })
+            .pipe(Effect.orDie)
+        }),
+      )
+      .handle("updateStatus", ({ params, payload }) =>
+        Effect.gen(function* () {
+          const user = yield* CurrentUser
+          return yield* listingsService.updateStatus(params.id, user.userId, payload.status)
+        }),
+      )
+  }),
 ).pipe(
-	Layer.provide(AuthorizationLayer),
-	Layer.provide(ListingService.layer),
-	Layer.provide(ListingRepository.layer),
-	Layer.provide(ImageUploadService.layer),
-	Layer.provide(TokenService.layer),
-	Layer.provide(AuthConfig.layer),
-	Layer.provide(DatabaseLive),
-	Layer.provide(BunServices.layer),
-	Layer.provide(Layer.provide(CacheService.layer, RedisService.layer)),
-	Layer.provide(RedisService.layer),
-	Layer.provide(RateLimiter.layer),
-);
+  Layer.provide(AuthorizationLayer),
+  Layer.provide(ListingService.layer),
+  Layer.provide(ListingRepository.layer),
+  Layer.provide(ImageUploadService.layer),
+  Layer.provide(TokenService.layer),
+  Layer.provide(AuthConfig.layer),
+  Layer.provide(DatabaseLive),
+  Layer.provide(BunServices.layer),
+  Layer.provide(Layer.provide(CacheService.layer, RedisService.layer)),
+  Layer.provide(RedisService.layer),
+  Layer.provide(RateLimiter.layer),
+)
