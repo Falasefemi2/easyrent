@@ -1,57 +1,48 @@
-import * as Context from "effect/Context";
-import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
-import * as Schema from "effect/Schema";
-import { loadConfig } from "../lib/config";
-import { BrevoClient } from "@getbrevo/brevo";
+import { BrevoClient } from "@getbrevo/brevo"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
+import { loadConfig } from "../lib/config"
 
-export class EmailError extends Schema.TaggedErrorClass<EmailError>()(
-	"EmailError",
-	{
-		message: Schema.String,
-	},
-) {}
+export class EmailError extends Schema.TaggedErrorClass<EmailError>()("EmailError", {
+  message: Schema.String,
+}) {}
 
 const escapeHtml = (value: string) =>
-	value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#039;");
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
 
 export class EmailService extends Context.Service<
-	EmailService,
-	{
-		readonly sendVerificationEmail: (params: {
-			to: string;
-			fullname: string;
-			token: string;
-		}) => Effect.Effect<void, EmailError>;
-	}
+  EmailService,
+  {
+    readonly sendVerificationEmail: (params: {
+      to: string
+      fullname: string
+      token: string
+    }) => Effect.Effect<void, EmailError>
+  }
 >()("easyrent/services/EmailService") {
-	static readonly layer = Layer.effect(
-		EmailService,
-		Effect.gen(function* () {
-			const config = yield* loadConfig;
-			const brevo = new BrevoClient({ apiKey: config.BREVO_API_KEY });
+  static readonly layer = Layer.effect(
+    EmailService,
+    Effect.gen(function* () {
+      const config = yield* loadConfig
+      const brevo = new BrevoClient({ apiKey: config.BREVO_API_KEY })
 
-			const sendVerificationEmail = Effect.fn(
-				"EmailService.sendVerificationEmail",
-			)(
-				(params: {
-					to: string;
-					fullname: string;
-					token: string;
-				}): Effect.Effect<void, EmailError> =>
-					Effect.tryPromise({
-						try: () =>
-							brevo.transactionalEmails //
-								.sendTransacEmail({
-									sender: { email: config.FROM_EMAIL, name: "EasyRent" },
-									to: [{ email: params.to }],
-									subject: "Verify your EasyRent email",
-									htmlContent: `
+      const sendVerificationEmail = Effect.fn("EmailService.sendVerificationEmail")(
+        (params: { to: string; fullname: string; token: string }): Effect.Effect<void, EmailError> =>
+          Effect.tryPromise({
+            try: () =>
+              brevo.transactionalEmails //
+                .sendTransacEmail({
+                  sender: { email: config.FROM_EMAIL, name: "EasyRent" },
+                  to: [{ email: params.to }],
+                  subject: "Verify your EasyRent email",
+                  htmlContent: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -250,14 +241,13 @@ export class EmailService extends Context.Service<
 </body>
 </html>
                 `,
-								})
-								.then(() => void 0),
-						catch: (e) =>
-							new EmailError({ message: `Failed to send email: ${e}` }),
-					}),
-			);
+                })
+                .then(() => void 0),
+            catch: (e) => new EmailError({ message: `Failed to send email: ${e}` }),
+          }),
+      )
 
-			return { sendVerificationEmail };
-		}),
-	);
+      return { sendVerificationEmail }
+    }),
+  )
 }

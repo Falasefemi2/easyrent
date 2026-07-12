@@ -1,6 +1,3 @@
-import { Schema } from "effect";
+import { Schema } from "effect"
 
-export class ConfigError extends Schema.TaggedErrorClass<ConfigError>()(
-	"ConfigError",
-	{ message: Schema.String },
-) {}
+export class ConfigError extends Schema.TaggedErrorClass<ConfigError>()("ConfigError", { message: Schema.String }) {}
