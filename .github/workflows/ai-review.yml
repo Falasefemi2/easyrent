@@ -1,0 +1,42 @@
+name: AI Code Review
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+
+      - name: Checkout AI reviewer bot
+        uses: actions/checkout@v4
+        with:
+          repository: Falasefemi2/ai-code-review-bot
+          path: ai-reviewer-bot
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install bot dependencies
+        working-directory: ai-reviewer-bot
+        run: bun install --frozen-lockfile
+
+      - name: Run AI code review
+        working-directory: ai-reviewer-bot
+        run: bun run src/index.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
