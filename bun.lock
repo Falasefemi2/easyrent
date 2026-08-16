@@ -24,7 +24,7 @@
         "@effect/language-service": "^0.86.2",
         "@types/bun": "latest",
         "@types/pg": "^8.20.0",
-        "drizzle-kit": "^1.0.0-beta.20",
+        "drizzle-kit": "1.0.0-rc.4",
         "pg": "^8.21.0",
       },
       "peerDependencies": {
@@ -53,7 +53,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.3", "", { "os": "win32", "cpu": "x64" }, "sha512-ExSaJWi4/u6+GXCszlSKpWSjKNbDseAYqqkCznsCsZ/4uidZ/BEqsCc5/3ctlq6dfIubdIIRSVLC/PG9xPl70Q=="],
 
-    "@drizzle-team/brocli": ["@drizzle-team/brocli@0.11.0", "", {}, "sha512-hD3pekGiPg0WPCCGAZmusBBJsDqGUR66Y452YgQsZOnkdQ7ViEPKuyP4huUGEZQefp8g34RRodXYmJ2TbCH+tg=="],
+    "@drizzle-team/brocli": ["@drizzle-team/brocli@0.12.0", "", {}, "sha512-mlUE+rZ8CatQekLhnaiN91Iemdd+e2gFKooGlnRB3oPTL3VghLfX24dx7HrzMNeC1JrIB/0kpsfyty3f5HNfxQ=="],
 
     "@effect/language-service": ["@effect/language-service@0.86.2", "", { "bin": { "effect-language-service": "cli.js" } }, "sha512-SaPln+8srOqDJDUwNTDmP5e+IYpEDr9+1epGznnsLqu8xvo6VnxyWARdeLpqvZJlb0Pgy9ca7ppqvvdWbHPXAg=="],
 
@@ -243,7 +243,7 @@
 
     "dotenv": ["dotenv@17.4.2", "", {}, "sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw=="],
 
-    "drizzle-kit": ["drizzle-kit@1.0.0-beta.22", "", { "dependencies": { "@drizzle-team/brocli": "^0.11.0", "@js-temporal/polyfill": "^0.5.1", "esbuild": "^0.25.10", "get-tsconfig": "^4.13.6", "jiti": "^2.6.1" }, "bin": { "drizzle-kit": "bin.cjs" } }, "sha512-9HTZuQRljQKTgCx4UhiGn8KYYfHGk4+B/bRR1714W67kz0qgJvdrG527i8rQD8uUyET9UTGR1u8syySJD4znGw=="],
+    "drizzle-kit": ["drizzle-kit@1.0.0-rc.4", "", { "dependencies": { "@drizzle-team/brocli": "^0.12.0", "@js-temporal/polyfill": "^0.5.1", "esbuild": "^0.25.10", "get-tsconfig": "^4.13.6", "jiti": "^2.6.1" }, "bin": { "drizzle-kit": "bin.cjs" } }, "sha512-KZCpjRyu+oYHLj/UJogfFlOkWhHVkaEI2EOT1U3NDVXUzLoTyPjqwFxwOrlQxsY6jzRyxcz4EacqboGfhEeYrA=="],
 
     "drizzle-orm": ["drizzle-orm@1.0.0-rc.1", "", { "peerDependencies": { "@aws-sdk/client-rds-data": ">=3", "@cloudflare/workers-types": ">=4", "@effect/sql-pg": ">=4.0.0-beta.58 || >=4.0.0", "@electric-sql/pglite": ">=0.2.0", "@libsql/client": ">=0.10.0", "@libsql/client-wasm": ">=0.10.0", "@neondatabase/serverless": ">=0.10.0", "@op-engineering/op-sqlite": ">=2", "@opentelemetry/api": "^1.4.1", "@planetscale/database": ">=1.13", "@sinclair/typebox": ">=0.34.8", "@sqlitecloud/drivers": ">=1.0.653", "@tidbcloud/serverless": "*", "@tursodatabase/database": ">=0.2.1", "@tursodatabase/database-common": ">=0.2.1", "@tursodatabase/database-wasm": ">=0.2.1", "@types/better-sqlite3": "*", "@types/mssql": "^9.1.4", "@types/pg": "*", "@types/sql.js": "*", "@upstash/redis": ">=1.34.7", "@vercel/postgres": ">=0.8.0", "@xata.io/client": "*", "arktype": ">=2.0.0", "better-sqlite3": ">=9.3.0", "bun-types": "*", "effect": ">=4.0.0-beta.58 || >=4.0.0", "expo-sqlite": ">=14.0.0", "mssql": "^11.0.1", "mysql2": ">=2", "pg": ">=8", "postgres": ">=3", "sql.js": ">=1", "sqlite3": ">=5", "typebox": ">=1.0.0", "valibot": ">=1.0.0-beta.7", "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["@aws-sdk/client-rds-data", "@cloudflare/workers-types", "@effect/sql-pg", "@electric-sql/pglite", "@libsql/client", "@libsql/client-wasm", "@neondatabase/serverless", "@op-engineering/op-sqlite", "@opentelemetry/api", "@planetscale/database", "@sinclair/typebox", "@sqlitecloud/drivers", "@tidbcloud/serverless", "@tursodatabase/database", "@tursodatabase/database-common", "@tursodatabase/database-wasm", "@types/better-sqlite3", "@types/mssql", "@types/pg", "@types/sql.js", "@upstash/redis", "@vercel/postgres", "@xata.io/client", "arktype", "better-sqlite3", "bun-types", "effect", "expo-sqlite", "mssql", "mysql2", "pg", "postgres", "sql.js", "sqlite3", "typebox", "valibot", "zod"] }, "sha512-jGCqAgxpz+OSHP2jQGooUHBxnFMTYl0TTRSfULBl52VNf7CtyNRnazUi+VdbSxvJrDP2lnIsmUh5O+HhKeSJCg=="],
 
