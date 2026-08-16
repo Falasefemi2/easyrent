@@ -7,7 +7,12 @@ export const RequestLoggerMiddleware = HttpMiddleware.make((httpApp) =>
     const req = yield* HttpServerRequest.HttpServerRequest
     const start = yield* Clock.currentTimeMillis
 
-    const response = yield* httpApp
+    const response = yield* httpApp.pipe(
+      Effect.withSpan(`http.${req.method} ${req.url}`, {
+        attributes: { method: req.method, url: req.url, category: "request" },
+        kind: "server",
+      }),
+    )
 
     const duration = (yield* Clock.currentTimeMillis) - start
 

@@ -3,6 +3,7 @@ import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core"
 import { Context, Effect, Layer, Option } from "effect"
 import { PgDatabase } from "../db"
 import { favorites, listingMedia, listings, users } from "../db/schema"
+import { withDbSpan } from "../services/TracerService"
 
 type DbEffect<A> = Effect.Effect<A, EffectDrizzleQueryError>
 
@@ -158,19 +159,24 @@ export class ListingRepository extends Context.Service<
       const create = Effect.fn("ListingsRepository.create")(
         (params: CreateListingParams): DbEffect<ListingRow> =>
           Effect.gen(function* () {
-            const rows = yield* db
-              .insert(listings)
-              .values({
-                landlordId: params.landlordId,
-                title: params.title,
-                description: params.description,
-                price: params.price,
-                rooms: params.rooms,
-                furnished: params.furnished,
-                address: params.address,
-                location: sql`ST_SetSRID(ST_MakePoint(${params.longitude}, ${params.latitude}), 4326)`,
-              })
-              .returning()
+            const rows = yield* withDbSpan(
+              "ListingsRepository.create.insert",
+              "listings",
+              "insert",
+              db
+                .insert(listings)
+                .values({
+                  landlordId: params.landlordId,
+                  title: params.title,
+                  description: params.description,
+                  price: params.price,
+                  rooms: params.rooms,
+                  furnished: params.furnished,
+                  address: params.address,
+                  location: sql`ST_SetSRID(ST_MakePoint(${params.longitude}, ${params.latitude}), 4326)`,
+                })
+                .returning(),
+            )
             return toListingRow(rows[0]!)
           }),
       )
@@ -194,8 +200,18 @@ export class ListingRepository extends Context.Service<
               longitude: sql<number>`ST_X(${listings.location}::geometry)`,
             }
             const [rows, countRows] = yield* Effect.all([
-              db.select(selectFields).from(listings).where(eq(listings.id, id)).limit(1),
-              db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id)),
+              withDbSpan(
+                "ListingsRepository.findById.selectListing",
+                "listings",
+                "select",
+                db.select(selectFields).from(listings).where(eq(listings.id, id)).limit(1),
+              ),
+              withDbSpan(
+                "ListingsRepository.findById.countFavorites",
+                "favorites",
+                "count",
+                db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id)),
+              ),
             ])
 
             if (!rows[0]) return Option.none()
@@ -217,38 +233,49 @@ export class ListingRepository extends Context.Service<
           >
         > =>
           Effect.gen(function* () {
-            const rows = yield* db
-              .select({
-                id: listings.id,
-                landlordId: listings.landlordId,
-                title: listings.title,
-                description: listings.description,
-                price: listings.price,
-                rooms: listings.rooms,
-                furnished: listings.furnished,
-                status: listings.status,
-                address: listings.address,
-                createdAt: listings.createdAt,
-                updatedAt: listings.updatedAt,
-                latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
-                longitude: sql<number>`ST_X(${listings.location}::geometry)`,
-                landlordPhone: users.phone,
-                landlordName: users.fullname,
-              })
-              .from(listings)
-              .leftJoin(users, eq(listings.landlordId, users.id))
-              .where(eq(listings.id, id))
-              .limit(1)
+            const rows = yield* withDbSpan(
+              "ListingsRepository.findByIdWithMedia.selectListing",
+              "listings",
+              "select",
+              db
+                .select({
+                  id: listings.id,
+                  landlordId: listings.landlordId,
+                  title: listings.title,
+                  description: listings.description,
+                  price: listings.price,
+                  rooms: listings.rooms,
+                  furnished: listings.furnished,
+                  status: listings.status,
+                  address: listings.address,
+                  createdAt: listings.createdAt,
+                  updatedAt: listings.updatedAt,
+                  latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
+                  longitude: sql<number>`ST_X(${listings.location}::geometry)`,
+                  landlordPhone: users.phone,
+                  landlordName: users.fullname,
+                })
+                .from(listings)
+                .leftJoin(users, eq(listings.landlordId, users.id))
+                .where(eq(listings.id, id))
+                .limit(1),
+            )
 
             if (!rows[0]) return Option.none()
 
-            const media = yield* db
-              .select()
-              .from(listingMedia)
-              .where(eq(listingMedia.listingId, id))
-              .orderBy(listingMedia.order)
+            const media = yield* withDbSpan(
+              "ListingsRepository.findByIdWithMedia.selectMedia",
+              "listing_media",
+              "select",
+              db.select().from(listingMedia).where(eq(listingMedia.listingId, id)).orderBy(listingMedia.order),
+            )
 
-            const countRows = yield* db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id))
+            const countRows = yield* withDbSpan(
+              "ListingsRepository.findByIdWithMedia.countFavorites",
+              "favorites",
+              "count",
+              db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id)),
+            )
 
             const favoriteCount = Number(countRows[0]?.count ?? 0)
 
@@ -321,41 +348,76 @@ export class ListingRepository extends Context.Service<
 
             const [rows, totalRows] = yield* Effect.all([
               whereClause
-                ? db
-                    .select(selectFields)
-                    .from(listings)
-                    .where(whereClause)
-                    .limit(limit)
-                    .offset(offset)
-                    .orderBy(desc(listings.createdAt))
-                : db.select(selectFields).from(listings).limit(limit).offset(offset).orderBy(desc(listings.createdAt)),
+                ? withDbSpan(
+                    "ListingsRepository.findAll.selectListings",
+                    "listings",
+                    "select",
+                    db
+                      .select(selectFields)
+                      .from(listings)
+                      .where(whereClause)
+                      .limit(limit)
+                      .offset(offset)
+                      .orderBy(desc(listings.createdAt)),
+                  )
+                : withDbSpan(
+                    "ListingsRepository.findAll.selectListings",
+                    "listings",
+                    "select",
+                    db
+                      .select(selectFields)
+                      .from(listings)
+                      .limit(limit)
+                      .offset(offset)
+                      .orderBy(desc(listings.createdAt)),
+                  ),
               whereClause
-                ? db.select({ count: count() }).from(listings).where(whereClause)
-                : db.select({ count: count() }).from(listings),
+                ? withDbSpan(
+                    "ListingsRepository.findAll.countListings",
+                    "listings",
+                    "count",
+                    db.select({ count: count() }).from(listings).where(whereClause),
+                  )
+                : withDbSpan(
+                    "ListingsRepository.findAll.countListings",
+                    "listings",
+                    "count",
+                    db.select({ count: count() }).from(listings),
+                  ),
             ])
 
             const listingIds = rows.map((r) => r.id)
             const countRows =
               listingIds.length > 0
-                ? yield* db
-                    .select({ listingId: favorites.listingId, count: count() })
-                    .from(favorites)
-                    .where(inArray(favorites.listingId, listingIds))
-                    .groupBy(favorites.listingId)
+                ? yield* withDbSpan(
+                    "ListingsRepository.findAll.countFavoritesByListing",
+                    "favorites",
+                    "count",
+                    db
+                      .select({ listingId: favorites.listingId, count: count() })
+                      .from(favorites)
+                      .where(inArray(favorites.listingId, listingIds))
+                      .groupBy(favorites.listingId),
+                  )
                 : []
 
             const countMap = Object.fromEntries(countRows.map((r) => [r.listingId, Number(r.count)]))
 
             const coverRows =
               listingIds.length > 0
-                ? yield* db
-                    .selectDistinctOn([listingMedia.listingId], {
-                      listingId: listingMedia.listingId,
-                      url: listingMedia.url,
-                    })
-                    .from(listingMedia)
-                    .where(inArray(listingMedia.listingId, listingIds))
-                    .orderBy(listingMedia.listingId, listingMedia.order)
+                ? yield* withDbSpan(
+                    "ListingsRepository.findAll.selectCoverImages",
+                    "listing_media",
+                    "select",
+                    db
+                      .selectDistinctOn([listingMedia.listingId], {
+                        listingId: listingMedia.listingId,
+                        url: listingMedia.url,
+                      })
+                      .from(listingMedia)
+                      .where(inArray(listingMedia.listingId, listingIds))
+                      .orderBy(listingMedia.listingId, listingMedia.order),
+                  )
                 : []
 
             const coverMap = Object.fromEntries(coverRows.map((r) => [r.listingId, r.url]))
@@ -395,14 +457,24 @@ export class ListingRepository extends Context.Service<
             }
 
             const [rows, totalRows] = yield* Effect.all([
-              db
-                .select(selectFields) // use selectFields here
-                .from(listings)
-                .where(eq(listings.landlordId, landlordId))
-                .limit(limit)
-                .offset(offset)
-                .orderBy(desc(listings.createdAt)),
-              db.select({ count: count() }).from(listings).where(eq(listings.landlordId, landlordId)),
+              withDbSpan(
+                "ListingsRepository.findByLandlord.selectListings",
+                "listings",
+                "select",
+                db
+                  .select(selectFields) // use selectFields here
+                  .from(listings)
+                  .where(eq(listings.landlordId, landlordId))
+                  .limit(limit)
+                  .offset(offset)
+                  .orderBy(desc(listings.createdAt)),
+              ),
+              withDbSpan(
+                "ListingsRepository.findByLandlord.countListings",
+                "listings",
+                "count",
+                db.select({ count: count() }).from(listings).where(eq(listings.landlordId, landlordId)),
+              ),
             ])
 
             const listingIds = rows.map((r) => r.id)
@@ -410,11 +482,16 @@ export class ListingRepository extends Context.Service<
             // Fetch favorite counts
             const countRows =
               listingIds.length > 0
-                ? yield* db
-                    .select({ listingId: favorites.listingId, count: count() })
-                    .from(favorites)
-                    .where(inArray(favorites.listingId, listingIds))
-                    .groupBy(favorites.listingId)
+                ? yield* withDbSpan(
+                    "ListingsRepository.findByLandlord.countFavoritesByListing",
+                    "favorites",
+                    "count",
+                    db
+                      .select({ listingId: favorites.listingId, count: count() })
+                      .from(favorites)
+                      .where(inArray(favorites.listingId, listingIds))
+                      .groupBy(favorites.listingId),
+                  )
                 : []
 
             const countMap = Object.fromEntries(countRows.map((r) => [r.listingId, Number(r.count)]))
@@ -422,14 +499,19 @@ export class ListingRepository extends Context.Service<
             // Fetch cover images
             const coverRows =
               listingIds.length > 0
-                ? yield* db
-                    .selectDistinctOn([listingMedia.listingId], {
-                      listingId: listingMedia.listingId,
-                      url: listingMedia.url,
-                    })
-                    .from(listingMedia)
-                    .where(inArray(listingMedia.listingId, listingIds))
-                    .orderBy(listingMedia.listingId, listingMedia.order)
+                ? yield* withDbSpan(
+                    "ListingsRepository.findByLandlord.selectCoverImages",
+                    "listing_media",
+                    "select",
+                    db
+                      .selectDistinctOn([listingMedia.listingId], {
+                        listingId: listingMedia.listingId,
+                        url: listingMedia.url,
+                      })
+                      .from(listingMedia)
+                      .where(inArray(listingMedia.listingId, listingIds))
+                      .orderBy(listingMedia.listingId, listingMedia.order),
+                  )
                 : []
 
             const coverMap = Object.fromEntries(coverRows.map((r) => [r.listingId, r.url]))
@@ -449,21 +531,32 @@ export class ListingRepository extends Context.Service<
       const addMedia = Effect.fn("ListingsRepository.addMedia")(
         (params: AddMediaParams): DbEffect<ListingMediaRow> =>
           Effect.gen(function* () {
-            const rows = yield* db
-              .insert(listingMedia)
-              .values({
-                listingId: params.listingId,
-                url: params.url,
-                type: params.type,
-                order: params.order,
-              })
-              .returning()
+            const rows = yield* withDbSpan(
+              "ListingsRepository.addMedia.insert",
+              "listing_media",
+              "insert",
+              db
+                .insert(listingMedia)
+                .values({
+                  listingId: params.listingId,
+                  url: params.url,
+                  type: params.type,
+                  order: params.order,
+                })
+                .returning(),
+            )
             return toMediaRow(rows[0]!)
           }),
       )
 
       const deleteMedia = Effect.fn("ListingsRepository.deleteMedia")(
-        (mediaId: string): DbEffect<void> => db.delete(listingMedia).where(eq(listingMedia.id, mediaId)),
+        (mediaId: string): DbEffect<void> =>
+          withDbSpan(
+            "ListingsRepository.deleteMedia.delete",
+            "listing_media",
+            "delete",
+            db.delete(listingMedia).where(eq(listingMedia.id, mediaId)),
+          ),
       )
 
       const update = Effect.fn("ListingsRepository.update")(
@@ -491,16 +584,32 @@ export class ListingRepository extends Context.Service<
               updateData.location = sql`ST_SetSRID(ST_MakePoint(${params.longitude}, ${params.latitude}), 4326)`
             }
 
-            const rows = yield* db.update(listings).set(updateData).where(eq(listings.id, id)).returning()
+            const rows = yield* withDbSpan(
+              "ListingsRepository.update.update",
+              "listings",
+              "update",
+              db.update(listings).set(updateData).where(eq(listings.id, id)).returning(),
+            )
 
-            const countRows = yield* db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id))
+            const countRows = yield* withDbSpan(
+              "ListingsRepository.update.countFavorites",
+              "favorites",
+              "count",
+              db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id)),
+            )
 
             return Option.fromNullishOr(rows[0] ? toListingRow(rows[0], Number(countRows[0]?.count ?? 0)) : null)
           }),
       )
 
       const deleteListing = Effect.fn("ListingsRepository.delete")(
-        (id: string): DbEffect<void> => db.delete(listings).where(eq(listings.id, id)),
+        (id: string): DbEffect<void> =>
+          withDbSpan(
+            "ListingsRepository.delete.delete",
+            "listings",
+            "delete",
+            db.delete(listings).where(eq(listings.id, id)),
+          ),
       )
 
       return {

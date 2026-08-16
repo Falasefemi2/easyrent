@@ -3,6 +3,7 @@ import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core"
 import { Context, Effect, Layer, Option } from "effect"
 import { PgDatabase } from "../db"
 import { refreshTokens, users } from "../db/schema"
+import { withDbSpan } from "../services/TracerService"
 
 export interface CreateUserParams {
   email: string
@@ -61,7 +62,12 @@ export class AuthRepository extends Context.Service<
       const findByEmail = Effect.fn("AuthRepository.findByEmail")(
         (email: string): DbEffect<Option.Option<UserRow>> =>
           Effect.gen(function* () {
-            const rows = yield* db.select().from(users).where(eq(users.email, email)).limit(1)
+            const rows = yield* withDbSpan(
+              "AuthRepository.findByEmail.select",
+              "users",
+              "select",
+              db.select().from(users).where(eq(users.email, email)).limit(1),
+            )
             return Option.fromNullOr(rows[0] ?? null)
           }),
       )
@@ -69,7 +75,12 @@ export class AuthRepository extends Context.Service<
       const findById = Effect.fn("AuthRepository.findById")(
         (id: string): DbEffect<Option.Option<UserRow>> =>
           Effect.gen(function* () {
-            const rows = yield* db.select().from(users).where(eq(users.id, id)).limit(1)
+            const rows = yield* withDbSpan(
+              "AuthRepository.findById.select",
+              "users",
+              "select",
+              db.select().from(users).where(eq(users.id, id)).limit(1),
+            )
             return Option.fromNullOr(rows[0] ?? null)
           }),
       )
@@ -77,73 +88,108 @@ export class AuthRepository extends Context.Service<
       const createUser = Effect.fn("AuthRepository.createUser")(
         (params: CreateUserParams): DbEffect<UserRow> =>
           Effect.gen(function* () {
-            const rows = yield* db
-              .insert(users)
-              .values({
-                email: params.email,
-                phone: params.phone,
-                passwordHash: params.passwordHash,
-                fullname: params.fullname,
-              })
-              .returning()
+            const rows = yield* withDbSpan(
+              "AuthRepository.createUser.insert",
+              "users",
+              "insert",
+              db
+                .insert(users)
+                .values({
+                  email: params.email,
+                  phone: params.phone,
+                  passwordHash: params.passwordHash,
+                  fullname: params.fullname,
+                })
+                .returning(),
+            )
             return rows[0]!
           }),
       )
 
       const storeRefreshToken = Effect.fn("AuthRepository.storeRefreshToken")(
         (params: { userId: string; tokenHash: string; expiresAt: Date }): DbEffect<void> =>
-          db.insert(refreshTokens).values({
-            userId: params.userId,
-            tokenHash: params.tokenHash,
-            expiresAt: params.expiresAt,
-          }),
+          withDbSpan(
+            "AuthRepository.storeRefreshToken.insert",
+            "refresh_tokens",
+            "insert",
+            db.insert(refreshTokens).values({
+              userId: params.userId,
+              tokenHash: params.tokenHash,
+              expiresAt: params.expiresAt,
+            }),
+          ),
       )
 
       const findRefreshToken = Effect.fn("AuthRepository.findRefreshToken")(
         (tokenHash: string): DbEffect<Option.Option<RefreshTokenRow>> =>
           Effect.gen(function* () {
-            const rows = yield* db.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, tokenHash)).limit(1)
+            const rows = yield* withDbSpan(
+              "AuthRepository.findRefreshToken.select",
+              "refresh_tokens",
+              "select",
+              db.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, tokenHash)).limit(1),
+            )
             return Option.fromNullOr(rows[0] ?? null)
           }),
       )
 
       const revokeRefreshToken = Effect.fn("AuthRepository.revokeRefreshToken")(
         (id: string): DbEffect<void> =>
-          db
-            .update(refreshTokens)
-            .set({
-              revokedAt: new Date(),
-            })
-            .where(eq(refreshTokens.id, id)),
+          withDbSpan(
+            "AuthRepository.revokeRefreshToken.update",
+            "refresh_tokens",
+            "update",
+            db
+              .update(refreshTokens)
+              .set({
+                revokedAt: new Date(),
+              })
+              .where(eq(refreshTokens.id, id)),
+          ),
       )
 
       const revokeAllUserTokens = Effect.fn("AuthRepository.revokeAllUserTokens")(
         (userId: string): DbEffect<void> =>
-          db
-            .update(refreshTokens)
-            .set({
-              revokedAt: new Date(),
-            })
-            .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt))),
+          withDbSpan(
+            "AuthRepository.revokeAllUserTokens.update",
+            "refresh_tokens",
+            "update",
+            db
+              .update(refreshTokens)
+              .set({
+                revokedAt: new Date(),
+              })
+              .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt))),
+          ),
       )
 
       const storeVerificationToken = Effect.fn("AuthRepository.storeVerificationToken")(
         (params: { userId: string; token: string; expiresAt: Date }): DbEffect<void> =>
           Effect.gen(function* () {
-            yield* db
-              .update(users)
-              .set({
-                verificationToken: params.token,
-                verificationTokenExpiresAt: params.expiresAt,
-              })
-              .where(eq(users.id, params.userId))
+            yield* withDbSpan(
+              "AuthRepository.storeVerificationToken.update",
+              "users",
+              "update",
+              db
+                .update(users)
+                .set({
+                  verificationToken: params.token,
+                  verificationTokenExpiresAt: params.expiresAt,
+                })
+                .where(eq(users.id, params.userId)),
+            )
           }),
       )
 
       const findByVerificationToken = Effect.fn("AuthRepository.findByVerificationToken")(
         (token: string): DbEffect<Option.Option<UserRow>> =>
           Effect.gen(function* () {
-            const rows = yield* db.select().from(users).where(eq(users.verificationToken, token)).limit(1)
+            const rows = yield* withDbSpan(
+              "AuthRepository.findByVerificationToken.select",
+              "users",
+              "select",
+              db.select().from(users).where(eq(users.verificationToken, token)).limit(1),
+            )
             return Option.fromNullOr(rows[0] ?? null)
           }),
       )
@@ -151,14 +197,19 @@ export class AuthRepository extends Context.Service<
       const markEmailVerified = Effect.fn("AuthRepository.markEmailVerified")(
         (userId: string): DbEffect<void> =>
           Effect.gen(function* () {
-            yield* db
-              .update(users)
-              .set({
-                emailVerified: true,
-                verificationToken: null,
-                verificationTokenExpiresAt: null,
-              })
-              .where(eq(users.id, userId))
+            yield* withDbSpan(
+              "AuthRepository.markEmailVerified.update",
+              "users",
+              "update",
+              db
+                .update(users)
+                .set({
+                  emailVerified: true,
+                  verificationToken: null,
+                  verificationTokenExpiresAt: null,
+                })
+                .where(eq(users.id, userId)),
+            )
           }),
       )
 

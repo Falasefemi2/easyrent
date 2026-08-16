@@ -3,6 +3,7 @@ import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core"
 import { Context, Effect, Layer, Option } from "effect"
 import { PgDatabase } from "../db"
 import { users } from "../db/schema"
+import { withDbSpan } from "../services/TracerService"
 
 type DbEffect<A> = Effect.Effect<A, EffectDrizzleQueryError>
 
@@ -29,13 +30,18 @@ export class UsersRepository extends Context.Service<
 
       const updateAvatar = Effect.fn("UsersRepository.updateAvatar")(
         (userId: string, avatarUrl: string): DbEffect<void> =>
-          db
-            .update(users)
-            .set({
-              avatarUrl,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, userId)),
+          withDbSpan(
+            "UsersRepository.updateAvatar.update",
+            "users",
+            "update",
+            db
+              .update(users)
+              .set({
+                avatarUrl,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, userId)),
+          ),
       )
 
       const findById = Effect.fn("UsersRepository.findById")(
@@ -52,18 +58,23 @@ export class UsersRepository extends Context.Service<
           }>
         > =>
           Effect.gen(function* () {
-            const rows = yield* db
-              .select({
-                id: users.id,
-                email: users.email,
-                avatarUrl: users.avatarUrl,
-                fullname: users.fullname,
-                phone: users.phone,
-                createdAt: users.createdAt,
-              })
-              .from(users)
-              .where(eq(users.id, userId))
-              .limit(1)
+            const rows = yield* withDbSpan(
+              "UsersRepository.findById.select",
+              "users",
+              "select",
+              db
+                .select({
+                  id: users.id,
+                  email: users.email,
+                  avatarUrl: users.avatarUrl,
+                  fullname: users.fullname,
+                  phone: users.phone,
+                  createdAt: users.createdAt,
+                })
+                .from(users)
+                .where(eq(users.id, userId))
+                .limit(1),
+            )
             return Option.fromNullishOr(rows[0] ?? null)
           }),
       )

@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import { loadConfig } from "../lib/config"
+import { withExternalSpan } from "./TracerService"
 
 export class EmailError extends Schema.TaggedErrorClass<EmailError>()("EmailError", {
   message: Schema.String,
@@ -35,14 +36,16 @@ export class EmailService extends Context.Service<
 
       const sendVerificationEmail = Effect.fn("EmailService.sendVerificationEmail")(
         (params: { to: string; fullname: string; token: string }): Effect.Effect<void, EmailError> =>
-          Effect.tryPromise({
-            try: () =>
-              brevo.transactionalEmails //
-                .sendTransacEmail({
-                  sender: { email: config.FROM_EMAIL, name: "EasyRent" },
-                  to: [{ email: params.to }],
-                  subject: "Verify your EasyRent email",
-                  htmlContent: `
+          withExternalSpan(
+            "EmailService.sendVerificationEmail.brevo",
+            Effect.tryPromise({
+              try: () =>
+                brevo.transactionalEmails //
+                  .sendTransacEmail({
+                    sender: { email: config.FROM_EMAIL, name: "EasyRent" },
+                    to: [{ email: params.to }],
+                    subject: "Verify your EasyRent email",
+                    htmlContent: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -241,10 +244,11 @@ export class EmailService extends Context.Service<
 </body>
 </html>
                 `,
-                })
-                .then(() => void 0),
-            catch: (e) => new EmailError({ message: `Failed to send email: ${e}` }),
-          }),
+                  })
+                  .then(() => void 0),
+              catch: (e) => new EmailError({ message: `Failed to send email: ${e}` }),
+            }),
+          ),
       )
 
       return { sendVerificationEmail }
