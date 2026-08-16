@@ -44,6 +44,8 @@ const makeTestAuthRepository = Layer.succeed(
             fullname: params.fullname,
             avatarUrl: null,
             emailVerified: true, // Default to true for tests to avoid verification flow
+            verificationToken: null,
+            verificationTokenExpiresAt: null,
           }
           users.set(user.id, user)
           usersByEmail.set(user.email, user)
@@ -89,8 +91,6 @@ const makeTestAuthRepository = Layer.succeed(
 
 const TestEmailService = Layer.succeed(EmailService, {
   sendVerificationEmail: vi.fn(() => Effect.void),
-  sendPasswordResetEmail: vi.fn(() => Effect.void),
-  sendWelcomeEmail: vi.fn(() => Effect.void),
 })
 
 const TestLoggerService = Layer.succeed(LoggerService, {

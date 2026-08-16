@@ -29,6 +29,9 @@ const makeTestListingRepository = Layer.succeed(
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       favoriteCount: 0,
+      latitude: params.latitude,
+      longitude: params.longitude,
+      coverImage: null,
     })
 
     return {
@@ -49,6 +52,8 @@ const makeTestListingRepository = Layer.succeed(
           if (!listing) return Option.none()
           return Option.some({
             ...listing,
+            landlordPhone: null,
+            landlordName: null,
             media: mediaStore.get(id) ?? [],
           })
         }),
@@ -137,6 +142,7 @@ const TestImageUploadService = Layer.succeed(ImageUploadService, {
 const TestCacheService = Layer.succeed(CacheService, {
   getJson: <T>(_key: string) => Effect.succeed<T | null>(null),
   setJson: (_key, _value, _ttl) => Effect.void,
+  getOrSet: <T, E>(_key: string, _ttlSeconds: number, compute: () => Effect.Effect<T, E>) => compute(),
   invalidate: (_key) => Effect.void,
   invalidateListings: () => Effect.void,
   invalidateListing: (_id) => Effect.void,

@@ -15,6 +15,7 @@ import { CacheService } from "./src/services/CacheService.ts"
 import { EmailService } from "./src/services/EmailService.ts"
 import { LoggerService } from "./src/services/LoggerService.ts"
 import { RedisService } from "./src/services/RedisService.ts"
+import { TracingLive } from "./src/services/TracerService"
 import { ImageUploadService } from "./src/services/UploadThingService"
 import { UsersApiHandlers } from "./src/users/http"
 import { UsersRepository } from "./src/users/UsersRepository"
@@ -77,6 +78,7 @@ const AppLayer = HttpServerLayer.pipe(
   Layer.provide(CacheLive),
   Layer.provide(RedisLive),
   Layer.provide(LoggerService.layer),
+  Layer.provide(TracingLive),
   Layer.provide(InfraLive),
 )
 

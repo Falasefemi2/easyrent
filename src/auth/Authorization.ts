@@ -12,7 +12,7 @@ export class CurrentUser extends Context.Service<
   }
 >()("easyrent/auth/Authorization/CurrentUser") {}
 
-export class Unauthorized extends Schema.TaggedErrorClass<Unauthorized>()(
+export class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   {
     message: Schema.String,

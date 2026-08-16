@@ -20,6 +20,9 @@ const seedListings = new Map<string, ListingRow>([
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       favoriteCount: 0,
+      latitude: 6.5244,
+      longitude: 3.3792,
+      coverImage: null,
     },
   ],
   [
@@ -37,6 +40,9 @@ const seedListings = new Map<string, ListingRow>([
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       favoriteCount: 0,
+      latitude: 6.4281,
+      longitude: 3.4219,
+      coverImage: null,
     },
   ],
 ])

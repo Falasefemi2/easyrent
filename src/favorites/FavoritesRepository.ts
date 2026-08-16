@@ -4,6 +4,7 @@ import { Context, Effect, Layer } from "effect"
 import { PgDatabase } from "../db"
 import { favorites, listingMedia, listings } from "../db/schema"
 import type { ListingMediaRow, ListingRow, PaginatedResult, PaginationParams } from "../listings/ListingsRepository"
+import { withDbSpan } from "../services/TracerService"
 
 type DbEffect<A> = Effect.Effect<A, EffectDrizzleQueryError>
 
@@ -78,22 +79,38 @@ export class FavoritesRepository extends Context.Service<
       const db = yield* PgDatabase
 
       const add = Effect.fn("FavoritesRepository.add")(
-        (userId: string, listingId: string): DbEffect<void> => db.insert(favorites).values({ userId, listingId }),
+        (userId: string, listingId: string): DbEffect<void> =>
+          withDbSpan(
+            "FavoritesRepository.add.insert",
+            "favorites",
+            "insert",
+            db.insert(favorites).values({ userId, listingId }),
+          ),
       )
 
       const remove = Effect.fn("FavoritesRepository.remove")(
         (userId: string, listingId: string): DbEffect<void> =>
-          db.delete(favorites).where(and(eq(favorites.userId, userId), eq(favorites.listingId, listingId))),
+          withDbSpan(
+            "FavoritesRepository.remove.delete",
+            "favorites",
+            "delete",
+            db.delete(favorites).where(and(eq(favorites.userId, userId), eq(favorites.listingId, listingId))),
+          ),
       )
 
       const exists = Effect.fn("FavoritesRepository.exists")(
         (userId: string, listingId: string): DbEffect<boolean> =>
           Effect.gen(function* () {
-            const rows = yield* db
-              .select()
-              .from(favorites)
-              .where(and(eq(favorites.userId, userId), eq(favorites.listingId, listingId)))
-              .limit(1)
+            const rows = yield* withDbSpan(
+              "FavoritesRepository.exists.select",
+              "favorites",
+              "select",
+              db
+                .select()
+                .from(favorites)
+                .where(and(eq(favorites.userId, userId), eq(favorites.listingId, listingId)))
+                .limit(1),
+            )
             return rows.length > 0
           }),
       )
@@ -104,16 +121,29 @@ export class FavoritesRepository extends Context.Service<
             const { page, limit } = pagination
             const offset = (page - 1) * limit
 
-            const [favRows, totalRows] = yield* Effect.all([
-              db
-                .select()
-                .from(favorites)
-                .where(eq(favorites.userId, userId))
-                .limit(limit)
-                .offset(offset)
-                .orderBy(desc(favorites.createdAt)),
-              db.select({ count: count() }).from(favorites).where(eq(favorites.userId, userId)),
-            ])
+            const [favRows, totalRows] = yield* Effect.all(
+              [
+                withDbSpan(
+                  "FavoritesRepository.findByUser.selectFavorites",
+                  "favorites",
+                  "select",
+                  db
+                    .select()
+                    .from(favorites)
+                    .where(eq(favorites.userId, userId))
+                    .limit(limit)
+                    .offset(offset)
+                    .orderBy(desc(favorites.createdAt)),
+                ),
+                withDbSpan(
+                  "FavoritesRepository.findByUser.countFavorites",
+                  "favorites",
+                  "count",
+                  db.select({ count: count() }).from(favorites).where(eq(favorites.userId, userId)),
+                ),
+              ],
+              { concurrency: "unbounded" },
+            )
 
             const total = Number(totalRows[0]?.count ?? 0)
 
@@ -123,49 +153,74 @@ export class FavoritesRepository extends Context.Service<
 
             const listingIds = favRows.map((f) => f.listingId)
 
-            // Fetch listings with lat/lng extracted
-            const listingRows = yield* db
-              .select({
-                id: listings.id,
-                landlordId: listings.landlordId,
-                title: listings.title,
-                description: listings.description,
-                price: listings.price,
-                rooms: listings.rooms,
-                furnished: listings.furnished,
-                status: listings.status,
-                address: listings.address,
-                createdAt: listings.createdAt,
-                updatedAt: listings.updatedAt,
-                latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
-                longitude: sql<number>`ST_X(${listings.location}::geometry)`,
-              })
-              .from(listings)
-              .where(inArray(listings.id, listingIds))
+            const [listingRows, mediaRows, countRows, coverRows] = yield* Effect.all(
+              [
+                // Fetch listings with lat/lng extracted
+                withDbSpan(
+                  "FavoritesRepository.findByUser.selectListings",
+                  "listings",
+                  "select",
+                  db
+                    .select({
+                      id: listings.id,
+                      landlordId: listings.landlordId,
+                      title: listings.title,
+                      description: listings.description,
+                      price: listings.price,
+                      rooms: listings.rooms,
+                      furnished: listings.furnished,
+                      status: listings.status,
+                      address: listings.address,
+                      createdAt: listings.createdAt,
+                      updatedAt: listings.updatedAt,
+                      latitude: sql<number>`ST_Y(${listings.location}::geometry)`,
+                      longitude: sql<number>`ST_X(${listings.location}::geometry)`,
+                    })
+                    .from(listings)
+                    .where(inArray(listings.id, listingIds)),
+                ),
 
-            // Fetch media
-            const mediaRows = yield* db
-              .select()
-              .from(listingMedia)
-              .where(inArray(listingMedia.listingId, listingIds))
-              .orderBy(listingMedia.order)
+                // Fetch media
+                withDbSpan(
+                  "FavoritesRepository.findByUser.selectMedia",
+                  "listing_media",
+                  "select",
+                  db
+                    .select()
+                    .from(listingMedia)
+                    .where(inArray(listingMedia.listingId, listingIds))
+                    .orderBy(listingMedia.order),
+                ),
 
-            // Fetch favorite counts
-            const countRows = yield* db
-              .select({ listingId: favorites.listingId, count: count() })
-              .from(favorites)
-              .where(inArray(favorites.listingId, listingIds))
-              .groupBy(favorites.listingId)
+                // Fetch favorite counts
+                withDbSpan(
+                  "FavoritesRepository.findByUser.countFavoritesByListing",
+                  "favorites",
+                  "count",
+                  db
+                    .select({ listingId: favorites.listingId, count: count() })
+                    .from(favorites)
+                    .where(inArray(favorites.listingId, listingIds))
+                    .groupBy(favorites.listingId),
+                ),
 
-            // Fetch cover images
-            const coverRows = yield* db
-              .selectDistinctOn([listingMedia.listingId], {
-                listingId: listingMedia.listingId,
-                url: listingMedia.url,
-              })
-              .from(listingMedia)
-              .where(inArray(listingMedia.listingId, listingIds))
-              .orderBy(listingMedia.listingId, listingMedia.order)
+                // Fetch cover images
+                withDbSpan(
+                  "FavoritesRepository.findByUser.selectCoverImages",
+                  "listing_media",
+                  "select",
+                  db
+                    .selectDistinctOn([listingMedia.listingId], {
+                      listingId: listingMedia.listingId,
+                      url: listingMedia.url,
+                    })
+                    .from(listingMedia)
+                    .where(inArray(listingMedia.listingId, listingIds))
+                    .orderBy(listingMedia.listingId, listingMedia.order),
+                ),
+              ],
+              { concurrency: "unbounded" },
+            )
 
             const mediaMap = listingIds.reduce(
               (acc, id) => {
@@ -206,7 +261,12 @@ export class FavoritesRepository extends Context.Service<
       const countForListing = Effect.fn("FavoritesRepository.countForListing")(
         (listingId: string): DbEffect<number> =>
           Effect.gen(function* () {
-            const rows = yield* db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, listingId))
+            const rows = yield* withDbSpan(
+              "FavoritesRepository.countForListing.count",
+              "favorites",
+              "count",
+              db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, listingId)),
+            )
             return Number(rows[0]?.count ?? 0)
           }),
       )

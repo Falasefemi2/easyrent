@@ -103,24 +103,16 @@ export class ListingService extends Context.Service<
           Effect.gen(function* () {
             const key = CacheKeys.listing(id)
 
-            const cached = yield* cache.getJson<
-              ListingRow & {
-                media: ListingMediaRow[]
-                landlordPhone: string | null
-                landlordName: string | null
-              }
-            >(key)
-            if (cached) return cached
-
-            const maybeListing = yield* repo.findByIdWithMedia(id).pipe(Effect.orDie)
-            const listing = yield* Option.match(maybeListing, {
-              onNone: () => Effect.fail(new ListingNotFound({ message: `Listing ${id} not found` })),
-              onSome: Effect.succeed,
-            })
-
-            yield* cache.setJson(key, listing, CACHE_TTL.listing)
-
-            return listing
+            return yield* cache.getOrSet(key, CACHE_TTL.listing, () =>
+              Effect.gen(function* () {
+                const maybeListing = yield* repo.findByIdWithMedia(id).pipe(Effect.orDie)
+                const listing = yield* Option.match(maybeListing, {
+                  onNone: () => Effect.fail(new ListingNotFound({ message: `Listing ${id} not found` })),
+                  onSome: Effect.succeed,
+                })
+                return listing
+              }),
+            )
           }),
       )
 
@@ -137,12 +129,9 @@ export class ListingService extends Context.Service<
           Effect.gen(function* () {
             const key = CacheKeys.listings(pagination.page, pagination.limit, filters)
 
-            const cached = yield* cache.getJson<PaginatedResult<ListingRow>>(key)
-            if (cached) return cached
-
-            const result = yield* repo.findAll(pagination, filters).pipe(Effect.orDie)
-            yield* cache.setJson(key, result, CACHE_TTL.listings)
-            return result
+            return yield* cache.getOrSet(key, CACHE_TTL.listings, () =>
+              repo.findAll(pagination, filters).pipe(Effect.orDie),
+            )
           }),
       )
 

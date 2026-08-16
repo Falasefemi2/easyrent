@@ -61,21 +61,27 @@ export const listings = pgTable(
     index("listings_status_idx").on(table.status),
     index("listings_price_idx").on(table.price),
     index("listings_landlord_idx").on(table.landlordId),
+    index("listings_created_at_idx").on(table.createdAt),
+    index("listings_location_idx").using("gist", table.location),
   ],
 )
 
-export const listingMedia = pgTable("listing_media", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  listingId: uuid("listing_id")
-    .notNull()
-    .references(() => listings.id, {
-      onDelete: "cascade",
-    }),
-  url: text("url").notNull(),
-  type: mediaTypeEnum("type").notNull(),
-  order: integer("order").default(0).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-})
+export const listingMedia = pgTable(
+  "listing_media",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, {
+        onDelete: "cascade",
+      }),
+    url: text("url").notNull(),
+    type: mediaTypeEnum("type").notNull(),
+    order: integer("order").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("listing_media_listing_idx").on(table.listingId)],
+)
 
 export const favorites = pgTable(
   "favorites",
@@ -96,19 +102,24 @@ export const favorites = pgTable(
     primaryKey({
       columns: [table.userId, table.listingId],
     }),
+    index("favorites_listing_idx").on(table.listingId),
   ],
 )
 
-export const refreshTokens = pgTable("refresh_tokens", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  tokenHash: text("token_hash").notNull().unique(), // store hash, not raw token
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  revokedAt: timestamp("revoked_at"), // null = active
-})
+export const refreshTokens = pgTable(
+  "refresh_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(), // store hash, not raw token
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at"), // null = active
+  },
+  (table) => [index("refresh_tokens_user_idx").on(table.userId)],
+)
 
 export const relations = defineRelations(
   {

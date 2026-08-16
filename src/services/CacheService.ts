@@ -32,6 +32,11 @@ export class CacheService extends Context.Service<
   {
     readonly getJson: <T>(key: string) => Effect.Effect<T | null>
     readonly setJson: <T>(key: string, value: T, ttlSeconds: number) => Effect.Effect<void>
+    readonly getOrSet: <T, E>(
+      key: string,
+      ttlSeconds: number,
+      compute: () => Effect.Effect<T, E>,
+    ) => Effect.Effect<T, E>
     readonly invalidate: (key: string) => Effect.Effect<void>
     readonly invalidateListings: () => Effect.Effect<void>
     readonly invalidateListing: (id: string) => Effect.Effect<void>
@@ -41,6 +46,11 @@ export class CacheService extends Context.Service<
     CacheService,
     Effect.gen(function* () {
       const redis = yield* RedisService
+
+      // Add up to 10% jitter to the TTL so hot keys don't all expire
+      // simultaneously (avoids a thundering herd on the DB).
+      const jitterTtl = (ttlSeconds: number): number =>
+        Math.max(1, ttlSeconds + Math.floor(Math.random() * Math.ceil(ttlSeconds * 0.1)))
 
       const getJson = Effect.fn("CacheService.getJson")(
         <T>(key: string): Effect.Effect<T | null> =>
@@ -80,12 +90,46 @@ export class CacheService extends Context.Service<
             if (!serialized) return
 
             yield* redis
-              .set(key, serialized, ttlSeconds)
+              .set(key, serialized, jitterTtl(ttlSeconds))
               .pipe(
                 Effect.catchTag("RedisError", (e) =>
                   Effect.logWarning(`Cache SET failed: ${e.message}`).pipe(Effect.asVoid),
                 ),
               )
+          }),
+      )
+
+      const getOrSet = Effect.fn("CacheService.getOrSet")(
+        <T, E>(key: string, ttlSeconds: number, compute: () => Effect.Effect<T, E>): Effect.Effect<T, E> =>
+          Effect.gen(function* () {
+            const cached = yield* getJson<T>(key)
+            if (cached !== null) return cached
+
+            // Single-flight: only one caller recomputes on a miss while others
+            // wait on the lock, so concurrent requests don't all hit the DB.
+            const lockKey = `${key}:lock`
+            const lockAcquired = yield* redis
+              .setNx(lockKey, "1", 10)
+              .pipe(Effect.catchTag("RedisError", () => Effect.succeed(true)))
+
+            if (lockAcquired) {
+              try {
+                const value = yield* compute()
+                yield* setJson(key, value, ttlSeconds)
+                return value
+              } finally {
+                yield* redis.del(lockKey).pipe(Effect.catchTag("RedisError", () => Effect.void))
+              }
+            }
+
+            // Another caller holds the lock; poll briefly for the fresh value.
+            for (let attempt = 0; attempt < 5; attempt++) {
+              yield* Effect.sleep(10)
+              const fresh = yield* getJson<T>(key)
+              if (fresh !== null) return fresh
+            }
+
+            return yield* compute()
           }),
       )
 
@@ -112,6 +156,7 @@ export class CacheService extends Context.Service<
       return {
         getJson,
         setJson,
+        getOrSet,
         invalidate,
         invalidateListings,
         invalidateListing,
