@@ -6,7 +6,7 @@ import * as Schema from "effect/Schema"
 import { loadConfig } from "../lib/config"
 import { withExternalSpan } from "./TracerService"
 
-export class EmailError extends Schema.TaggedErrorClass<EmailError>()("EmailError", {
+export class EmailError extends Schema.TaggedError<EmailError>()("EmailError", {
   message: Schema.String,
 }) {}
 

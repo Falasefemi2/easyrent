@@ -14,6 +14,12 @@ const makeTestRedis = (storage: Map<string, { value: number; ttl: number }>) =>
         Effect.sync(() => {
           storage.set(key, { value: parseInt(value, 10), ttl: ttlSeconds })
         }),
+      setNx: (key, value, ttlSeconds) =>
+        Effect.sync(() => {
+          if (storage.has(key)) return false
+          storage.set(key, { value: parseInt(value, 10), ttl: ttlSeconds })
+          return true
+        }),
       del: (...keys) =>
         Effect.sync(() => {
           for (const key of keys) storage.delete(key)

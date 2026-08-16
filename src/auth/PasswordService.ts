@@ -1,7 +1,7 @@
 import argon2 from "argon2"
 import { Context, Effect, Layer, Schema } from "effect"
 
-export class HashError extends Schema.TaggedErrorClass<HashError>()("HashError", {
+export class HashError extends Schema.TaggedError<HashError>()("HashError", {
   message: Schema.String,
 }) {}
 

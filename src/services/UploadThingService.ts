@@ -3,7 +3,7 @@ import { Context, Effect, Layer, Schema } from "effect"
 import { loadConfig } from "../lib/config"
 import { withExternalSpan } from "./TracerService"
 
-export class ImageUploadError extends Schema.TaggedErrorClass<ImageUploadError>()("ImageUploadError", {
+export class ImageUploadError extends Schema.TaggedError<ImageUploadError>()("ImageUploadError", {
   message: Schema.String,
 }) {}
 

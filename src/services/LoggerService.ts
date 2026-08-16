@@ -7,7 +7,7 @@ import { loadConfig } from "../lib/config"
 
 type LogLevel = "info" | "warn" | "error" | "debug"
 
-class AxiomError extends Schema.TaggedErrorClass<AxiomError>()("AxiomError", {
+class AxiomError extends Schema.TaggedError<AxiomError>()("AxiomError", {
   message: Schema.String,
 }) {}
 

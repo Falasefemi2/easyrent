@@ -6,7 +6,7 @@ import { RedisService } from "./RedisService"
 // Dev-only flag: skip rate limiting so perf profiling isn't skewed by Redis RTT
 const perfSkipRateLimit = process.env.PERF_SKIP_RATE_LIMIT === "1"
 
-export class RateLimitExceeded extends Schema.TaggedErrorClass<RateLimitExceeded>()(
+export class RateLimitExceeded extends Schema.TaggedError<RateLimitExceeded>()(
   "RateLimitExceeded",
   {
     message: Schema.String,

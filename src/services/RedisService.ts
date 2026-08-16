@@ -3,13 +3,14 @@ import Redis from "ioredis"
 import { loadConfig } from "../lib/config"
 import { withRedisSpan } from "./TracerService"
 
-export class RedisError extends Schema.TaggedErrorClass<RedisError>()("RedisError", { message: Schema.String }) {}
+export class RedisError extends Schema.TaggedError<RedisError>()("RedisError", { message: Schema.String }) {}
 
 export class RedisService extends Context.Service<
   RedisService,
   {
     readonly get: (key: string) => Effect.Effect<string | null, RedisError>
     readonly set: (key: string, value: string, ttlSeconds: number) => Effect.Effect<void, RedisError>
+    readonly setNx: (key: string, value: string, ttlSeconds: number) => Effect.Effect<boolean, RedisError>
     readonly del: (...keys: string[]) => Effect.Effect<void, RedisError>
     readonly delPattern: (pattern: string) => Effect.Effect<void, RedisError>
     readonly incr: (key: string) => Effect.Effect<number, RedisError>
@@ -67,16 +68,34 @@ export class RedisService extends Context.Service<
           withRedisSpan(
             "RedisService.delPattern",
             Effect.gen(function* () {
-              const keys = yield* Effect.tryPromise({
-                try: () => client.keys(pattern),
-                catch: (e) => new RedisError({ message: `redis del failed: ${e}` }),
-              })
-              if (keys.length > 0) {
+              const matched: string[] = []
+              let cursor = "0"
+              do {
+                const [nextCursor, keys] = yield* Effect.tryPromise({
+                  try: () => client.scan(cursor, "MATCH", pattern, "COUNT", 100),
+                  catch: (e) => new RedisError({ message: `redis scan failed: ${e}` }),
+                })
+                cursor = nextCursor
+                matched.push(...keys)
+              } while (cursor !== "0")
+
+              if (matched.length > 0) {
                 yield* Effect.tryPromise({
-                  try: () => client.del(...keys).then(() => void 0),
+                  try: () => client.del(...matched).then(() => void 0),
                   catch: (e) => new RedisError({ message: `Redis DEL failed: ${e}` }),
                 })
               }
+            }),
+          ),
+      )
+
+      const setNx = Effect.fn("RedisService.setNx")(
+        (key: string, value: string, ttlSeconds: number): Effect.Effect<boolean, RedisError> =>
+          withRedisSpan(
+            "RedisService.setNx",
+            Effect.tryPromise({
+              try: () => client.set(key, value, "EX", ttlSeconds, "NX").then((res) => res === "OK"),
+              catch: (e) => new RedisError({ message: `redis setnx failed: ${e}` }),
             }),
           ),
       )
@@ -113,7 +132,7 @@ export class RedisService extends Context.Service<
             }),
           ),
       )
-      return { get, set, del, delPattern, incr, expire, ttl }
+      return { get, set, setNx, del, delPattern, incr, expire, ttl }
     }),
   )
 }
