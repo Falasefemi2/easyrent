@@ -3,6 +3,9 @@ import { HttpServerRequest } from "effect/unstable/http"
 import { LoggerService } from "./LoggerService"
 import { RedisService } from "./RedisService"
 
+// Dev-only flag: skip rate limiting so perf profiling isn't skewed by Redis RTT
+const perfSkipRateLimit = process.env.PERF_SKIP_RATE_LIMIT === "1"
+
 export class RateLimitExceeded extends Schema.TaggedErrorClass<RateLimitExceeded>()(
   "RateLimitExceeded",
   {
@@ -36,6 +39,7 @@ export class RateLimiter extends Context.Service<
 
       const check = (params: { key: string; limit: number; windowSeconds: number }) =>
         Effect.gen(function* () {
+          if (perfSkipRateLimit) return
           const count = yield* redis.incr(params.key).pipe(Effect.catchTag("RedisError", () => Effect.succeed(0)))
 
           let ttl = yield* redis.ttl(params.key).pipe(Effect.catchTag("RedisError", () => Effect.succeed(-1)))
