@@ -1,7 +1,7 @@
 import { BunServices } from "@effect/platform-bun"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, Predicate } from "effect"
 import { HttpServerRequest } from "effect/unstable/http"
-import type { PersistedFile } from "effect/unstable/http/Multipart"
+import { isPersistedFile } from "effect/unstable/http/Multipart"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { Api } from "../auth/Api"
 import { AuthConfig } from "../auth/AuthConfig"
@@ -91,27 +91,27 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
           const fileField = persisted.file
           const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField
 
-          if (!fileEntry || typeof fileEntry === "string") {
+          if (!isPersistedFile(fileEntry)) {
             return yield* new ImageUploadError({
               message: "No file uploaded",
             })
           }
 
           const typeField = persisted.type
-          const type = Array.isArray(typeField) ? typeField[0] : (typeField ?? "image")
+          const typeEntry = Array.isArray(typeField) ? typeField[0] : (typeField ?? "image")
+          const type: "image" | "video" = Predicate.isString(typeEntry) && typeEntry === "video" ? "video" : "image"
 
           const orderField = persisted.order
-          const order = Array.isArray(orderField)
-            ? parseInt(orderField[0] as string, 10)
-            : parseInt((orderField as string) ?? "0", 10)
+          const orderEntry = Array.isArray(orderField) ? orderField[0] : orderField
+          const order = Predicate.isString(orderEntry) ? parseInt(orderEntry, 10) : 0
 
           return yield* listingsService
             .uploadMedia({
               listingId: params.id,
               landlordId: user.userId,
-              fileName: (fileEntry as PersistedFile).name,
-              filePath: (fileEntry as PersistedFile).path,
-              type: type as "image" | "video",
+              fileName: fileEntry.name,
+              filePath: fileEntry.path,
+              type,
               order: Number.isNaN(order) ? 0 : order,
             })
             .pipe(Effect.catchTag("ImageUploadError", Effect.die))

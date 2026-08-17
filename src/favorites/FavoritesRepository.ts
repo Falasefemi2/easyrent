@@ -222,13 +222,10 @@ export class FavoritesRepository extends Context.Service<
               { concurrency: "unbounded" },
             )
 
-            const mediaMap = listingIds.reduce(
-              (acc, id) => {
-                acc[id] = mediaRows.filter((m) => m.listingId === id).map(toMediaRow)
-                return acc
-              },
-              {} as Record<string, ListingMediaRow[]>,
-            )
+            const mediaMap = listingIds.reduce<Record<string, ListingMediaRow[]>>((acc, id) => {
+              acc[id] = mediaRows.filter((m) => m.listingId === id).map(toMediaRow)
+              return acc
+            }, {})
 
             const countMap = Object.fromEntries(countRows.map((r) => [r.listingId, Number(r.count)]))
 

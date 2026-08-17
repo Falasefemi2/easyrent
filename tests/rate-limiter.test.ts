@@ -115,6 +115,8 @@ describe("RateLimiter", () => {
         remoteAddress: "127.0.0.1",
       }
 
+      // SAFETY: checkRequest only reads headers and remoteAddress, so a minimal
+      // test double suffices for the full HttpServerRequest service.
       yield* limiter
         .checkRequest({ prefix: "test", limit: 1, windowSeconds: 60 })
         .pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, mockRequest as any))

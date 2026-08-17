@@ -68,6 +68,8 @@ export class CacheService extends Context.Service<
 
             return yield* Effect.sync(() => {
               try {
+                // SAFETY: raw was JSON.stringify'd from the same T by setJson,
+                // so parsing it back is expected to match the caller's type.
                 return JSON.parse(raw) as T
               } catch {
                 return null

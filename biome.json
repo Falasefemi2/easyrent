@@ -12,7 +12,8 @@
       "!**/.turbo",
       "!**/.vite",
       "!**/node_modules",
-      "!.turbo"
+      "!.turbo",
+      "!tools/oxlint/anti-slop"
     ],
     "ignoreUnknown": false,
     "maxSize": 2097152

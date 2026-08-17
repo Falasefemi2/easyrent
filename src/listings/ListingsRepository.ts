@@ -1,5 +1,6 @@
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm"
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core"
+import type { PgUpdateSetSource } from "drizzle-orm/pg-core"
 import { Context, Effect, Layer, Option } from "effect"
 import { PgDatabase } from "../db"
 import { favorites, listingMedia, listings, users } from "../db/schema"
@@ -585,7 +586,7 @@ export class ListingRepository extends Context.Service<
           >,
         ): DbEffect<Option.Option<ListingRow>> =>
           Effect.gen(function* () {
-            const updateData: Record<string, unknown> = {
+            const updateData: PgUpdateSetSource<typeof listings> = {
               updatedAt: new Date(),
             }
 

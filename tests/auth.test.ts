@@ -126,8 +126,8 @@ describe("AuthService", () => {
 
         expect(result.accessToken).toBeDefined()
         expect(result.refreshToken).toBeDefined()
-        expect(typeof result.accessToken).toBe("string")
-        expect(typeof result.refreshToken).toBe("string")
+        expect(result.accessToken).toEqual(expect.any(String))
+        expect(result.refreshToken).toEqual(expect.any(String))
       }).pipe(Effect.provide(testLayer)),
     )
 
@@ -150,7 +150,7 @@ describe("AuthService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("EmailAlreadyTaken")
+            expect(error.value).toMatchObject({ _tag: "EmailAlreadyTaken" })
           }
         }
       }).pipe(Effect.provide(testLayer)),
@@ -202,7 +202,7 @@ describe("AuthService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("InvalidCredentials")
+            expect(error.value).toMatchObject({ _tag: "InvalidCredentials" })
           }
         }
       }).pipe(Effect.provide(testLayer)),
@@ -224,7 +224,7 @@ describe("AuthService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("InvalidCredentials")
+            expect(error.value).toMatchObject({ _tag: "InvalidCredentials" })
           }
         }
       }).pipe(Effect.provide(testLayer)),
@@ -271,7 +271,7 @@ describe("AuthService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("InvalidToken")
+            expect(error.value).toMatchObject({ _tag: "InvalidToken" })
           }
         }
       }).pipe(Effect.provide(testLayer)),
@@ -299,7 +299,7 @@ describe("AuthService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("InvalidToken")
+            expect(error.value).toMatchObject({ _tag: "InvalidToken" })
           }
         }
       }).pipe(Effect.provide(testLayer)),

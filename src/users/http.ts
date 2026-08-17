@@ -1,6 +1,7 @@
 import { BunServices } from "@effect/platform-bun"
 import { Effect, Layer, Option } from "effect"
 import { HttpServerRequest } from "effect/unstable/http"
+import { isPersistedFile } from "effect/unstable/http/Multipart"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { Api } from "../auth/Api"
 import { AuthConfig } from "../auth/AuthConfig"
@@ -32,7 +33,7 @@ export const UsersApiHandlers = HttpApiBuilder.group(
           const fileField = persisted.file
           const fileEntry = Array.isArray(fileField) ? fileField[0] : fileField
 
-          if (!fileEntry || typeof fileEntry === "string") {
+          if (!isPersistedFile(fileEntry)) {
             return yield* new ImageUploadError({ message: "No file uploaded" })
           }
 

@@ -127,7 +127,7 @@ export class AuthService extends Context.Service<
               success: true,
             })
 
-            return yield* issueTokens(user.id, user.email) as Effect.Effect<AuthTokens, never>
+            return yield* issueTokens(user.id, user.email)
           }),
       )
 

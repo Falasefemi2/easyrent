@@ -243,7 +243,7 @@ export class ListingService extends Context.Service<
 
             yield* assertOwner(listing, landlordId)
 
-            const updated = yield* repo.update(id, { status } as any).pipe(Effect.orDie)
+            const updated = yield* repo.update(id, { status }).pipe(Effect.orDie)
             yield* cache.invalidateListing(id)
 
             return yield* Option.match(updated, {

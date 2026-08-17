@@ -7,6 +7,15 @@ export class ImageUploadError extends Schema.TaggedError<ImageUploadError>()("Im
   message: Schema.String,
 }) {}
 
+const CloudinaryUploadResponse = Schema.Struct({
+  secure_url: Schema.optional(Schema.String),
+  error: Schema.optional(
+    Schema.Struct({
+      message: Schema.String,
+    }),
+  ),
+})
+
 export class ImageUploadService extends Context.Service<
   ImageUploadService,
   {
@@ -55,9 +64,10 @@ export class ImageUploadService extends Context.Service<
                   },
                 )
 
-                const data = (await res.json()) as any
+                const data = Schema.decodeUnknownSync(CloudinaryUploadResponse)(await res.json())
                 if (data.error) throw new Error(data.error.message)
-                return data.secure_url as string
+                if (!data.secure_url) throw new Error("Cloudinary did not return a secure_url")
+                return data.secure_url
               },
               catch: (e) =>
                 new ImageUploadError({

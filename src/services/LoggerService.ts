@@ -7,6 +7,8 @@ import { loadConfig } from "../lib/config"
 
 type LogLevel = "info" | "warn" | "error" | "debug"
 
+type LogMetadata = Readonly<Record<string, string | number | boolean | null | undefined>>
+
 class AxiomError extends Schema.TaggedError<AxiomError>()("AxiomError", {
   message: Schema.String,
 }) {}
@@ -19,16 +21,16 @@ interface LogEvent {
   listingId?: string
   duration?: number
   error?: string
-  metadata?: Record<string, unknown>
+  metadata?: LogMetadata
 }
 
 export class LoggerService extends Context.Service<
   LoggerService,
   {
-    readonly info: (message: string, metadata?: Record<string, unknown>) => Effect.Effect<void>
-    readonly warn: (message: string, metadata?: Record<string, unknown>) => Effect.Effect<void>
-    readonly error: (message: string, error?: unknown, metadata?: Record<string, unknown>) => Effect.Effect<void>
-    readonly debug: (message: string, metadata?: Record<string, unknown>) => Effect.Effect<void>
+    readonly info: (message: string, metadata?: LogMetadata) => Effect.Effect<void>
+    readonly warn: (message: string, metadata?: LogMetadata) => Effect.Effect<void>
+    readonly error: (message: string, cause?: unknown, metadata?: LogMetadata) => Effect.Effect<void>
+    readonly debug: (message: string, metadata?: LogMetadata) => Effect.Effect<void>
     readonly logRequest: (params: {
       method: string
       url: string
@@ -71,24 +73,24 @@ export class LoggerService extends Context.Service<
           catch: () => new AxiomError({ message: "axiom ingest failed" }),
         }).pipe(Effect.orDie)
 
-      const info = (message: string, metadata?: Record<string, unknown>) =>
+      const info = (message: string, metadata?: LogMetadata) =>
         send({ level: "info", message, metadata }).pipe(
           Effect.forkDetach, // fire and forget
           Effect.asVoid,
         )
 
-      const warn = (message: string, metadata?: Record<string, unknown>) =>
+      const warn = (message: string, metadata?: LogMetadata) =>
         send({ level: "warn", message, metadata }).pipe(Effect.forkDetach, Effect.asVoid)
 
-      const error = (message: string, err?: unknown, metadata?: Record<string, unknown>) =>
+      const error = (message: string, cause?: unknown, metadata?: LogMetadata) =>
         send({
           level: "error",
           message,
-          error: err instanceof Error ? err.message : String(err),
+          error: cause instanceof Error ? cause.message : String(cause),
           metadata,
         }).pipe(Effect.asVoid) // errors flush synchronously, no fork
 
-      const debug = (message: string, metadata?: Record<string, unknown>) =>
+      const debug = (message: string, metadata?: LogMetadata) =>
         process.env.NODE_ENV === "development"
           ? send({ level: "debug", message, metadata }).pipe(Effect.forkDetach, Effect.asVoid)
           : Effect.void

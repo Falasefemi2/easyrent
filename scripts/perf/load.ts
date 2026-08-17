@@ -15,6 +15,8 @@
  *   SEED_PASSWORD sign-in password   (default password123)
  */
 
+import { Schema } from "effect"
+
 interface Endpoint {
   name: string
   method: "GET" | "POST" | "PATCH" | "DELETE"
@@ -29,6 +31,30 @@ interface Sample {
   status: number
   ms: number
 }
+
+interface Summary {
+  n: number
+  ok: number
+  failures: number
+  p50Ms: number
+  p90Ms: number
+  p95Ms: number
+  p99Ms: number
+  maxMs: number
+  meanMs: number
+}
+
+const SignInResponse = Schema.Struct({
+  accessToken: Schema.String,
+})
+
+const ListingListResponse = Schema.Struct({
+  data: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+    }),
+  ),
+})
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000"
 const CONCURRENCY = Number(process.env.CONCURRENCY ?? "8")
@@ -58,7 +84,7 @@ const percentile = (sorted: number[], p: number): number => {
   return sorted[idx] ?? 0
 }
 
-const summarize = (samples: Sample[]): Record<string, unknown> => {
+const summarize = (samples: Sample[]): Summary => {
   const ok = samples.filter((s) => s.ok)
   const times = ok.map((s) => s.ms).sort((a, b) => a - b)
   const mean = times.length ? times.reduce((a, b) => a + b, 0) / times.length : 0
@@ -84,7 +110,7 @@ async function signIn(): Promise<string> {
     body: JSON.stringify({ email: SEED_EMAIL, password: SEED_PASSWORD }),
   })
   if (!res.ok) throw new Error(`sign-in failed: ${res.status} ${await res.text()}`)
-  const data = (await res.json()) as { accessToken: string }
+  const data = Schema.decodeUnknownSync(SignInResponse)(await res.json())
   return data.accessToken
 }
 
@@ -96,14 +122,14 @@ async function prime(tokens: { access: string }): Promise<void> {
   // Grab a set of listing ids so getById has real variety to target.
   const listRes = await fetch(`${BASE}/listings?page=1&limit=20`)
   if (listRes.ok) {
-    const list = (await listRes.json()) as { data: Array<{ id: string }> }
+    const list = Schema.decodeUnknownSync(ListingListResponse)(await listRes.json())
     for (const row of list.data.slice(0, 20)) LISTING_IDS.add(row.id)
   }
   const mine = await fetch(`${BASE}/listings/my?page=1&limit=10`, {
     headers: { Authorization: `Bearer ${tokens.access}` },
   })
   if (mine.ok) {
-    const list = (await mine.json()) as { data: Array<{ id: string }> }
+    const list = Schema.decodeUnknownSync(ListingListResponse)(await mine.json())
     for (const row of list.data) MY_LISTING_IDS.add(row.id)
   }
 }
@@ -113,17 +139,18 @@ async function runEndpoint(ep: Endpoint, token: string): Promise<Sample> {
   const path = await resolvePath(ep.path, listingId)
   const started = performance.now()
   try {
+    const headers = {
+      "Content-Type": "application/json",
+      ...(ep.auth && token ? { Authorization: `Bearer ${token}` } : undefined),
+    }
     const res = await fetch(`${BASE}${path}`, {
       method: ep.method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(ep.auth && token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers,
       body: ep.body ? JSON.stringify(ep.body) : undefined,
     })
     await res.arrayBuffer()
     return { name: ep.name, ok: res.ok, status: res.status, ms: performance.now() - started }
-  } catch (e) {
+  } catch {
     return { name: ep.name, ok: false, status: 0, ms: performance.now() - started }
   }
 }
@@ -148,7 +175,7 @@ async function main(): Promise<void> {
   const token = await signIn()
   await prime({ access: token })
 
-  const report: Record<string, Record<string, unknown>> = {}
+  const report: Record<string, Summary> = {}
   for (const ep of endpoints()) {
     const samples = await loadEndpoint(ep, token)
     report[ep.name] = summarize(samples)
@@ -161,7 +188,7 @@ async function main(): Promise<void> {
   }
   for (const [name, s] of Object.entries(report)) {
     console.log(
-      `${name.padEnd(24)} p50=${(s.p50Ms as number).toFixed(1)}ms p90=${(s.p90Ms as number).toFixed(1)}ms p95=${(s.p95Ms as number).toFixed(1)}ms p99=${(s.p99Ms as number).toFixed(1)}ms max=${(s.maxMs as number).toFixed(1)}ms ok=${s.ok}/${s.n}`,
+      `${name.padEnd(24)} p50=${s.p50Ms.toFixed(1)}ms p90=${s.p90Ms.toFixed(1)}ms p95=${s.p95Ms.toFixed(1)}ms p99=${s.p99Ms.toFixed(1)}ms max=${s.maxMs.toFixed(1)}ms ok=${s.ok}/${s.n}`,
     )
   }
 }

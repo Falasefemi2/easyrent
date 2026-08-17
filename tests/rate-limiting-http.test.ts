@@ -44,6 +44,8 @@ describe("HTTP SignUp Rate Limiting", () => {
         }),
       )
 
+      // SAFETY: this layer is only provided to satisfy the PgDatabase service
+      // requirement; the rate-limited routes never touch the database.
       const mockPgClient = Layer.succeed(PgClient, {} as any)
 
       // Build routes

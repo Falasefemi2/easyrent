@@ -1,7 +1,7 @@
 import { Context, Effect, Layer } from "effect"
 import { loadConfig } from "../lib/config"
 
-export interface AuthConfigShape {
+export interface AuthConfigValues {
   readonly accessTokenSecret: Uint8Array
   readonly refreshTokenSecret: Uint8Array
   readonly accessTokenTtlSeconds: number
@@ -10,7 +10,7 @@ export interface AuthConfigShape {
   readonly databaseUrl: string
 }
 
-export class AuthConfig extends Context.Service<AuthConfig, AuthConfigShape>()("easyrent/auth/AuthConfig") {
+export class AuthConfig extends Context.Service<AuthConfig, AuthConfigValues>()("easyrent/auth/AuthConfig") {
   static readonly layer = Layer.effect(
     AuthConfig,
     Effect.gen(function* () {

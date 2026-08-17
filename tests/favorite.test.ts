@@ -134,7 +134,7 @@ describe("FavoritesService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("AlreadyFavorited")
+            expect(error.value).toMatchObject({ _tag: "AlreadyFavorited" })
           }
         }
       }).pipe(Effect.provide(testLayer)),
@@ -162,7 +162,7 @@ describe("FavoritesService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("FavoriteNotFound")
+            expect(error.value).toMatchObject({ _tag: "FavoriteNotFound" })
           }
         }
       }).pipe(Effect.provide(makeTestLayer())),
