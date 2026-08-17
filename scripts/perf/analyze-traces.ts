@@ -10,6 +10,8 @@
 
 import * as fs from "node:fs"
 
+type SpanAttributeValue = string | number | boolean | null
+
 interface SpanRecord {
   name: string
   traceId: string
@@ -18,7 +20,7 @@ interface SpanRecord {
   startTimeMs: number
   durationMs: number
   kind: string
-  attributes: Record<string, unknown>
+  attributes: Record<string, SpanAttributeValue>
 }
 
 const file = process.argv[2] ?? process.env.TRACE_FILE ?? "perf/traces.jsonl"
@@ -29,6 +31,8 @@ const lines = fs
   .split("\n")
   .filter((l) => l.trim().length > 0)
 
+// SAFETY: the trace JSONL is written by TracerService which serializes SpanRecord
+// directly, so each line is expected to match this contract.
 const spans: SpanRecord[] = lines.map((l) => JSON.parse(l) as SpanRecord)
 
 const round1 = (n: number): number => Math.round(n * 10) / 10
@@ -50,7 +54,9 @@ const normalizePath = (name: string): string => {
   return path.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "/:id")
 }
 
-const rootSpans = spans.filter((s) => s.kind === "server" && s.name.startsWith("http.") && !s.name.startsWith("http.server"))
+const rootSpans = spans.filter(
+  (s) => s.kind === "server" && s.name.startsWith("http.") && !s.name.startsWith("http.server"),
+)
 const endpointBuckets = new Map<string, SpanRecord[]>()
 for (const s of rootSpans) {
   const ep = normalizePath(s.name)

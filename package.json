@@ -7,6 +7,8 @@
     "format:check": "biome format .",
     "lint": "biome lint --write .",
     "lint:check": "biome lint .",
+    "lint:oxlint": "oxlint .",
+    "lint:oxlint:check": "oxlint .",
     "check": "biome check --write .",
     "check:check": "biome check .",
     "ci": "biome ci .",
@@ -50,10 +52,12 @@
     "@biomejs/biome": "2.5.3",
     "@effect/experimental": "^0.61.1",
     "@effect/tsgo": "0.36.4",
+    "@oxlint/plugins": "1.78.0",
     "@types/bun": "latest",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "1.0.0-rc.4",
-    "typescript": "^7.0.0",
-    "pg": "^8.21.0"
+    "oxlint": "1.78.0",
+    "pg": "^8.21.0",
+    "typescript": "^7.0.0"
   }
 }

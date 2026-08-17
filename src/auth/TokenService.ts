@@ -1,5 +1,5 @@
 import * as crypto from "node:crypto"
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer, Predicate } from "effect"
 import { jwtVerify, SignJWT } from "jose"
 import { AuthConfig } from "./AuthConfig"
 import { InvalidToken, TokenExpired } from "./AuthError"
@@ -43,10 +43,14 @@ export class TokenService extends Context.Service<
         (token: string): Effect.Effect<AccessTokenPayload, InvalidToken | TokenExpired> =>
           Effect.tryPromise({
             try: () =>
-              jwtVerify(token, config.accessTokenSecret).then((r) => ({
-                sub: r.payload.sub as string,
-                email: r.payload.email as string,
-              })),
+              jwtVerify(token, config.accessTokenSecret).then((r) => {
+                const sub = r.payload.sub
+                const email = r.payload.email
+                if (!Predicate.isString(sub) || !Predicate.isString(email)) {
+                  throw new Error("Malformed access token payload")
+                }
+                return { sub, email }
+              }),
             catch: (e) => {
               const msg = String(e)
               if (msg.includes("expired")) {

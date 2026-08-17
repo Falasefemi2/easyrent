@@ -10,6 +10,8 @@ import * as Tracer from "effect/Tracer"
 
 const randomId = () => randomBytes(8).toString("hex")
 
+type SpanAttributeValue = string | number | boolean | bigint | null | undefined
+
 interface TraceRecord {
   name: string
   traceId: string
@@ -18,7 +20,7 @@ interface TraceRecord {
   startTimeMs: number
   durationMs: number
   kind: Tracer.SpanKind
-  attributes: Record<string, unknown>
+  attributes: Record<string, SpanAttributeValue>
 }
 
 class LoggingSpan implements Tracer.Span {
@@ -33,7 +35,7 @@ class LoggingSpan implements Tracer.Span {
   readonly kind: Tracer.SpanKind
   readonly sampled: boolean
   status: SpanStatus
-  attributes = new Map<string, unknown>()
+  attributes = new Map<string, SpanAttributeValue>()
 
   constructor(options: {
     readonly name: string
@@ -64,11 +66,11 @@ class LoggingSpan implements Tracer.Span {
     emitSpan(this)
   }
 
-  attribute(key: string, value: unknown): void {
+  attribute(key: string, value: SpanAttributeValue): void {
     this.attributes.set(key, value)
   }
 
-  event(_name: string, _startTime: bigint, _attributes?: Record<string, unknown>): void {}
+  event(_name: string, _startTime: bigint, _attributes?: Record<string, SpanAttributeValue>): void {}
 
   addLinks(links: ReadonlyArray<SpanLink>): void {
     this.links.push(...links)

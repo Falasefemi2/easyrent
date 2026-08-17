@@ -217,7 +217,7 @@ describe("ListingService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("ListingNotFound")
+            expect(error.value).toMatchObject({ _tag: "ListingNotFound" })
           }
         }
       }).pipe(Effect.provide(testLayer)),
@@ -274,7 +274,7 @@ describe("ListingService", () => {
           const error = Cause.findErrorOption(result.cause)
           expect(Option.isSome(error)).toBe(true)
           if (Option.isSome(error)) {
-            expect((error.value as any)._tag).toBe("ListingForbidden")
+            expect(error.value).toMatchObject({ _tag: "ListingForbidden" })
           }
         }
       }).pipe(Effect.provide(testLayer)),

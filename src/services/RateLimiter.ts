@@ -70,9 +70,9 @@ export class RateLimiter extends Context.Service<
           Effect.gen(function* () {
             const req = yield* HttpServerRequest.HttpServerRequest
             const ip =
-              (req.headers["cf-connecting-ip"] as string) ??
-              (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
-              (req.headers["x-real-ip"] as string) ??
+              req.headers["cf-connecting-ip"] ??
+              req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ??
+              req.headers["x-real-ip"] ??
               Option.getOrElse(req.remoteAddress, () => "unknown")
 
             return yield* check({

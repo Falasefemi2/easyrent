@@ -2,25 +2,16 @@
   "version": "8",
   "dialect": "postgres",
   "id": "3fc3d143-33e5-4e83-92b4-ba7d007fa0bd",
-  "prevIds": [
-    "9eb7dabc-1fd5-4f21-8ffa-88b1afcfa0ef"
-  ],
+  "prevIds": ["9eb7dabc-1fd5-4f21-8ffa-88b1afcfa0ef"],
   "ddl": [
     {
-      "values": [
-        "image",
-        "video"
-      ],
+      "values": ["image", "video"],
       "name": "media_type",
       "entityType": "enums",
       "schema": "public"
     },
     {
-      "values": [
-        "avaiable",
-        "rented",
-        "inative"
-      ],
+      "values": ["avaiable", "rented", "inative"],
       "name": "status",
       "entityType": "enums",
       "schema": "public"
@@ -719,14 +710,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "favorites_user_id_users_id_fkey",
@@ -736,14 +723,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "listing_id"
-      ],
+      "columns": ["listing_id"],
       "schemaTo": "public",
       "tableTo": "listings",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "favorites_listing_id_listings_id_fkey",
@@ -753,14 +736,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "listing_id"
-      ],
+      "columns": ["listing_id"],
       "schemaTo": "public",
       "tableTo": "listings",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "listing_media_listing_id_listings_id_fkey",
@@ -770,14 +749,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "landlord_id"
-      ],
+      "columns": ["landlord_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "listings_landlord_id_users_id_fkey",
@@ -787,14 +762,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "refresh_tokens_user_id_users_id_fkey",
@@ -803,10 +774,7 @@
       "table": "refresh_tokens"
     },
     {
-      "columns": [
-        "user_id",
-        "listing_id"
-      ],
+      "columns": ["user_id", "listing_id"],
       "nameExplicit": false,
       "name": "favorites_pkey",
       "entityType": "pks",
@@ -814,9 +782,7 @@
       "table": "favorites"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "listing_media_pkey",
       "schema": "public",
@@ -824,9 +790,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "listings_pkey",
       "schema": "public",
@@ -834,9 +798,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "refresh_tokens_pkey",
       "schema": "public",
@@ -844,9 +806,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "users_pkey",
       "schema": "public",
@@ -855,9 +815,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "token_hash"
-      ],
+      "columns": ["token_hash"],
       "nullsNotDistinct": false,
       "name": "refresh_tokens_token_hash_key",
       "schema": "public",
@@ -866,9 +824,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
+      "columns": ["email"],
       "nullsNotDistinct": false,
       "name": "users_email_key",
       "schema": "public",
@@ -877,9 +833,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "phone"
-      ],
+      "columns": ["phone"],
       "nullsNotDistinct": false,
       "name": "users_phone_key",
       "schema": "public",

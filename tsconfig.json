@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/@effect/tsgo/schema.json",
+  "exclude": ["tools/oxlint/anti-slop/**"],
   "compilerOptions": {
     "plugins": [
       {
