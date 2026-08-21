@@ -316,9 +316,6 @@ export class ListingRepository extends Context.Service<
             if (filters?.status) {
               conditions.push(eq(listings.status, filters.status))
             }
-            if (filters?.status) {
-              conditions.push(eq(listings.status, filters.status))
-            }
             if (filters?.furnished !== undefined) {
               conditions.push(eq(listings.furnished, filters.furnished))
             }
