@@ -142,7 +142,7 @@ export class FavoritesRepository extends Context.Service<
                   db.select({ count: count() }).from(favorites).where(eq(favorites.userId, userId)),
                 ),
               ],
-              { concurrency: "unbounded" },
+              { concurrency: 4 },
             )
 
             const total = Number(totalRows[0]?.count ?? 0)
@@ -219,7 +219,7 @@ export class FavoritesRepository extends Context.Service<
                     .orderBy(listingMedia.listingId, listingMedia.order),
                 ),
               ],
-              { concurrency: "unbounded" },
+              { concurrency: 4 },
             )
 
             const mediaMap = listingIds.reduce<Record<string, ListingMediaRow[]>>((acc, id) => {
