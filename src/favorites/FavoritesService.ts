@@ -1,5 +1,6 @@
 import { Context, Effect, Layer } from "effect"
 import type { PaginatedResult, PaginationParams } from "../listings/ListingsRepository"
+import { CacheService } from "../services/CacheService"
 import { AlreadyFavorited, FavoriteNotFound } from "./FavoritesError"
 import { type FavoriteListingRow, FavoritesRepository } from "./FavoritesRepository"
 
@@ -22,6 +23,7 @@ export class FavoritesService extends Context.Service<
     FavoritesService,
     Effect.gen(function* () {
       const repo = yield* FavoritesRepository
+      const cache = yield* CacheService
 
       const add = Effect.fn("FavoritesService.add")(
         (userId: string, listingId: string): Effect.Effect<void, AlreadyFavorited> =>
@@ -35,6 +37,8 @@ export class FavoritesService extends Context.Service<
             }
 
             yield* repo.add(userId, listingId).pipe(Effect.orDie)
+            // favoriteCount is embedded in cached listing payloads
+            yield* cache.invalidateListing(listingId)
           }),
       )
 
@@ -50,6 +54,7 @@ export class FavoritesService extends Context.Service<
             }
 
             yield* repo.remove(userId, listingId).pipe(Effect.orDie)
+            yield* cache.invalidateListing(listingId)
           }),
       )
 

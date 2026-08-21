@@ -5,6 +5,8 @@ import { AuthConfig } from "../auth/AuthConfig"
 import { AuthorizationLayer, CurrentUser } from "../auth/Authorization"
 import { TokenService } from "../auth/TokenService"
 import { DatabaseLive } from "../db"
+import { CacheService } from "../services/CacheService"
+import { RedisService } from "../services/RedisService.ts"
 import { FavoritesRepository } from "./FavoritesRepository"
 import { FavoritesService } from "./FavoritesService"
 
@@ -51,4 +53,6 @@ export const FavoritesApiHandlers = HttpApiBuilder.group(
   Layer.provide(TokenService.layer),
   Layer.provide(AuthConfig.layer),
   Layer.provide(DatabaseLive),
+  Layer.provide(Layer.provide(CacheService.layer, RedisService.layer)),
+  Layer.provide(RedisService.layer),
 )

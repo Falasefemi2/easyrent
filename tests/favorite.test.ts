@@ -3,6 +3,7 @@ import { Cause, Effect, Exit, Layer, Option } from "effect"
 import { type FavoriteListingRow, FavoritesRepository } from "../src/favorites/FavoritesRepository"
 import { FavoritesService } from "../src/favorites/FavoritesService"
 import type { ListingRow } from "../src/listings/ListingsRepository"
+import { CacheService } from "../src/services/CacheService"
 
 const seedListings = new Map<string, ListingRow>([
   [
@@ -108,9 +109,25 @@ export const makeTestFavoritesRepository = () =>
     })(),
   )
 
-const testLayer = FavoritesService.layer.pipe(Layer.provideMerge(makeTestFavoritesRepository()))
+const TestCacheService = Layer.succeed(CacheService, {
+  getJson: <T>(_key: string) => Effect.succeed<T | null>(null),
+  setJson: (_key, _value, _ttl) => Effect.void,
+  getOrSet: <T, E>(_key: string, _ttlSeconds: number, compute: () => Effect.Effect<T, E>) => compute(),
+  invalidate: (_key) => Effect.void,
+  invalidateListings: () => Effect.void,
+  invalidateListing: (_id) => Effect.void,
+})
 
-const makeTestLayer = () => FavoritesService.layer.pipe(Layer.provideMerge(makeTestFavoritesRepository()))
+const testLayer = FavoritesService.layer.pipe(
+  Layer.provideMerge(makeTestFavoritesRepository()),
+  Layer.provideMerge(TestCacheService),
+)
+
+const makeTestLayer = () =>
+  FavoritesService.layer.pipe(
+    Layer.provideMerge(makeTestFavoritesRepository()),
+    Layer.provideMerge(TestCacheService),
+  )
 
 describe("FavoritesService", () => {
   describe("add", () => {

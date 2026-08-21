@@ -32,6 +32,8 @@ export class ListingService extends Context.Service<
         furnished?: boolean
         minRooms?: number
         rooms?: number
+        minPrice?: number
+        maxPrice?: number
         search?: string
       },
     ) => Effect.Effect<PaginatedResult<ListingRow>>
@@ -124,6 +126,9 @@ export class ListingService extends Context.Service<
             furnished?: boolean
             minRooms?: number
             rooms?: number
+            minPrice?: number
+            maxPrice?: number
+            search?: string
           },
         ): Effect.Effect<PaginatedResult<ListingRow>> =>
           Effect.gen(function* () {
