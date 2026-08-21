@@ -137,7 +137,12 @@ export class ListingService extends Context.Service<
 
       const getMyListings = Effect.fn("ListingService.getMyListings")(
         (landlordId: string, pagination: PaginationParams): Effect.Effect<PaginatedResult<ListingRow>> =>
-          repo.findByLandlord(landlordId, pagination).pipe(Effect.orDie),
+          Effect.gen(function* () {
+            const key = CacheKeys.myListings(landlordId, pagination.page, pagination.limit)
+            return yield* cache.getOrSet(key, CACHE_TTL.myListings, () =>
+              repo.findByLandlord(landlordId, pagination).pipe(Effect.orDie),
+            )
+          }),
       )
 
       const uploadMedia = Effect.fn("ListingService.uploadMedia")(
