@@ -215,7 +215,7 @@ export class ListingRepository extends Context.Service<
                   db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id)),
                 ),
               ],
-              { concurrency: "unbounded" },
+              { concurrency: 4 },
             )
 
             if (!rows[0]) return Option.none()
@@ -279,7 +279,7 @@ export class ListingRepository extends Context.Service<
                   db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id)),
                 ),
               ],
-              { concurrency: "unbounded" },
+              { concurrency: 4 },
             )
 
             if (!rows[0]) return Option.none()
@@ -390,7 +390,7 @@ export class ListingRepository extends Context.Service<
                       db.select({ count: count() }).from(listings),
                     ),
               ],
-              { concurrency: "unbounded" },
+              { concurrency: 4 },
             )
 
             const listingIds = rows.map((r) => r.id)
@@ -423,7 +423,7 @@ export class ListingRepository extends Context.Service<
                           .orderBy(listingMedia.listingId, listingMedia.order),
                       ),
                     ],
-                    { concurrency: "unbounded" },
+                    { concurrency: 4 },
                   )
                 : [[], []]
 
@@ -486,7 +486,7 @@ export class ListingRepository extends Context.Service<
                   db.select({ count: count() }).from(listings).where(eq(listings.landlordId, landlordId)),
                 ),
               ],
-              { concurrency: "unbounded" },
+              { concurrency: 4 },
             )
 
             const listingIds = rows.map((r) => r.id)
@@ -522,7 +522,7 @@ export class ListingRepository extends Context.Service<
                           .orderBy(listingMedia.listingId, listingMedia.order),
                       ),
                     ],
-                    { concurrency: "unbounded" },
+                    { concurrency: 4 },
                   )
                 : [[], []]
 
