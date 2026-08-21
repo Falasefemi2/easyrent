@@ -41,8 +41,13 @@ const PaginatedFavoritesSchema = Schema.Struct({
 })
 
 const PaginationQuery = Schema.Struct({
-  page: Schema.optional(Schema.NumberFromString),
-  limit: Schema.optional(Schema.NumberFromString),
+  page: Schema.optional(Schema.NumberFromString.pipe(Schema.check(Schema.isGreaterThanOrEqualTo(1)))),
+  limit: Schema.optional(
+    Schema.NumberFromString.pipe(
+      Schema.check(Schema.isGreaterThanOrEqualTo(1)),
+      Schema.check(Schema.isLessThanOrEqualTo(100)),
+    ),
+  ),
 })
 
 export class FavoritesApiGroup extends HttpApiGroup.make("favorites")

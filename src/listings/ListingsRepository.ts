@@ -69,6 +69,15 @@ export interface PaginatedResult<T> {
   totalPages: number
 }
 
+export const MAX_PAGE_SIZE = 100
+
+// Defense-in-depth: clamps pagination so offset can never go negative and
+// limit stays bounded, even for internal callers that bypass API validation.
+export const normalizePagination = (pagination: PaginationParams): PaginationParams => ({
+  page: Math.max(1, Math.floor(pagination.page)),
+  limit: Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(pagination.limit))),
+})
+
 interface ListingSelectRow {
   id: string
   landlordId: string
@@ -215,7 +224,6 @@ export class ListingRepository extends Context.Service<
                   db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id)),
                 ),
               ],
-              { concurrency: 4 },
             )
 
             if (!rows[0]) return Option.none()
@@ -279,7 +287,6 @@ export class ListingRepository extends Context.Service<
                   db.select({ count: count() }).from(favorites).where(eq(favorites.listingId, id)),
                 ),
               ],
-              { concurrency: 4 },
             )
 
             if (!rows[0]) return Option.none()
@@ -309,7 +316,7 @@ export class ListingRepository extends Context.Service<
           },
         ): DbEffect<PaginatedResult<ListingRow>> =>
           Effect.gen(function* () {
-            const { page, limit } = pagination
+            const { page, limit } = normalizePagination(pagination)
             const offset = (page - 1) * limit
             const conditions = []
 
@@ -324,6 +331,12 @@ export class ListingRepository extends Context.Service<
             }
             if (filters?.minRooms !== undefined) {
               conditions.push(sql`${listings.rooms} >= ${filters.minRooms}`)
+            }
+            if (filters?.minPrice !== undefined) {
+              conditions.push(sql`${listings.price} >= ${filters.minPrice}`)
+            }
+            if (filters?.maxPrice !== undefined) {
+              conditions.push(sql`${listings.price} <= ${filters.maxPrice}`)
             }
             if (filters?.search) {
               const searchTerm = `%${filters.search}%`
@@ -390,7 +403,6 @@ export class ListingRepository extends Context.Service<
                       db.select({ count: count() }).from(listings),
                     ),
               ],
-              { concurrency: 4 },
             )
 
             const listingIds = rows.map((r) => r.id)
@@ -423,7 +435,6 @@ export class ListingRepository extends Context.Service<
                           .orderBy(listingMedia.listingId, listingMedia.order),
                       ),
                     ],
-                    { concurrency: 4 },
                   )
                 : [[], []]
 
@@ -446,7 +457,7 @@ export class ListingRepository extends Context.Service<
       const findByLandlord = Effect.fn("ListingsRepository.findByLandlord")(
         (landlordId: string, pagination: PaginationParams): DbEffect<PaginatedResult<ListingRow>> =>
           Effect.gen(function* () {
-            const { page, limit } = pagination
+            const { page, limit } = normalizePagination(pagination)
             const offset = (page - 1) * limit
 
             const selectFields = {
@@ -486,7 +497,6 @@ export class ListingRepository extends Context.Service<
                   db.select({ count: count() }).from(listings).where(eq(listings.landlordId, landlordId)),
                 ),
               ],
-              { concurrency: 4 },
             )
 
             const listingIds = rows.map((r) => r.id)
@@ -522,7 +532,6 @@ export class ListingRepository extends Context.Service<
                           .orderBy(listingMedia.listingId, listingMedia.order),
                       ),
                     ],
-                    { concurrency: 4 },
                   )
                 : [[], []]
 

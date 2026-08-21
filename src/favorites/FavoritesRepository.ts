@@ -3,7 +3,13 @@ import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core"
 import { Context, Effect, Layer } from "effect"
 import { PgDatabase } from "../db"
 import { favorites, listingMedia, listings } from "../db/schema"
-import type { ListingMediaRow, ListingRow, PaginatedResult, PaginationParams } from "../listings/ListingsRepository"
+import type {
+  ListingMediaRow,
+  ListingRow,
+  PaginatedResult,
+  PaginationParams,
+} from "../listings/ListingsRepository"
+import { normalizePagination } from "../listings/ListingsRepository"
 import { withDbSpan } from "../services/TracerService"
 
 type DbEffect<A> = Effect.Effect<A, EffectDrizzleQueryError>
@@ -118,7 +124,7 @@ export class FavoritesRepository extends Context.Service<
       const findByUser = Effect.fn("FavoritesRepository.findByUser")(
         (userId: string, pagination: PaginationParams): DbEffect<PaginatedResult<FavoriteListingRow>> =>
           Effect.gen(function* () {
-            const { page, limit } = pagination
+            const { page, limit } = normalizePagination(pagination)
             const offset = (page - 1) * limit
 
             const [favRows, totalRows] = yield* Effect.all(
@@ -142,7 +148,6 @@ export class FavoritesRepository extends Context.Service<
                   db.select({ count: count() }).from(favorites).where(eq(favorites.userId, userId)),
                 ),
               ],
-              { concurrency: 4 },
             )
 
             const total = Number(totalRows[0]?.count ?? 0)
@@ -219,7 +224,6 @@ export class FavoritesRepository extends Context.Service<
                     .orderBy(listingMedia.listingId, listingMedia.order),
                 ),
               ],
-              { concurrency: 4 },
             )
 
             const mediaMap = listingIds.reduce<Record<string, ListingMediaRow[]>>((acc, id) => {

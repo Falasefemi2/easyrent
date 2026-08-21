@@ -77,6 +77,12 @@ export class ListingsApiGroup extends HttpApiGroup.make("listings")
         furnished: Schema.optional(Schema.String), // "true" | "false"
         rooms: Schema.optional(Schema.NumberFromString),
         minRooms: Schema.optional(Schema.NumberFromString),
+        minPrice: Schema.optional(
+          Schema.NumberFromString.pipe(Schema.check(Schema.isGreaterThanOrEqualTo(0))),
+        ),
+        maxPrice: Schema.optional(
+          Schema.NumberFromString.pipe(Schema.check(Schema.isGreaterThanOrEqualTo(0))),
+        ),
         search: Schema.optional(Schema.String),
       }),
       success: PaginatedListingSchema,

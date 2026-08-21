@@ -39,6 +39,8 @@ export const ListingsApiHandlers = HttpApiBuilder.group(
                 furnished: query.furnished === "true" ? true : query.furnished === "false" ? false : undefined,
                 rooms: query.rooms,
                 minRooms: query.minRooms,
+                minPrice: query.minPrice,
+                maxPrice: query.maxPrice,
                 search: query.search,
               },
             )
